@@ -22,6 +22,7 @@ const Home = () => {
     localStorage.removeItem("jwt");
     localStorage.removeItem("firstName");
     localStorage.removeItem("lastName");
+    localStorage.removeItem("role");
     router.push("/login");
   };
 

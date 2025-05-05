@@ -9,3 +9,156 @@ html, body {
   height: 100%;
   overflow-x: hidden;
 }
+
+/* Hide template header and navigation in admin pages */
+body.admin-page header,
+body.admin-page nav,
+body.admin-page .main-menu,
+body.admin-page footer,
+body.admin-page .loader_bg,
+body.admin-page #wrapper:before,
+body.admin-page #wrapper:after,
+body.admin-page .navigation,
+body.admin-page .header {
+  display: none !important;
+}
+
+/* Remove black section at top of admin pages */
+body.admin-page:before,
+body.admin-page:after,
+body.admin-page > div:before,
+body.admin-page > div:after,
+body.admin-page #__next:before,
+body.admin-page #__next:after,
+body.admin-page #__next > div:before,
+body.admin-page #__next > div:after,
+body.admin-page div[class*="banner"],
+body.admin-page div[class*="slider"],
+body.admin-page div[class*="header-box"],
+body.admin-page section:not([class*="admin"]) {
+  display: none !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  max-height: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+/* Ensure admin page body takes full width without template margins/paddings */
+body.admin-page {
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow-x: hidden !important;
+  background-color: #f8f9fa !important; /* Light background instead of black */
+}
+
+/* Remove any background colors from container divs */
+body.admin-page #__next,
+body.admin-page #__next > div,
+body.admin-page #__next > div > div {
+  background-color: #f8f9fa !important;
+}
+
+/* Reset any potential overlay styles from the template */
+body.admin-page #wrapper {
+  background-color: transparent !important;
+  box-shadow: none !important;
+  position: static !important;
+  overflow: visible !important;
+}
+
+/* Force remove any unwanted fixed elements */
+body.admin-page *[class*="header"],
+body.admin-page *[class*="menu"],
+body.admin-page *[class*="nav"],
+body.admin-page *[class*="loader"] {
+  display: none !important;
+}
+
+/* Override any before/after pseudo-elements in the admin page */
+body.admin-page::before,
+body.admin-page::after,
+body.admin-page > *::before,
+body.admin-page > *::after,
+body.admin-page div::before,
+body.admin-page div::after {
+  display: none !important;
+  content: none !important;
+  height: 0 !important;
+  background: none !important;
+}
+
+/* Forcefully override any black backgrounds */
+body.admin-page,
+body.admin-page > div,
+body.admin-page #__next,
+body.admin-page > div > div,
+body.admin-page #__next > div,
+body.admin-page #__next > div > div {
+  background-color: #f8f9fa !important;
+}
+
+/* Fix for MUI Grid props deprecation warning */
+.MuiGrid-md-1, .MuiGrid-md-2, .MuiGrid-md-3, .MuiGrid-md-4, 
+.MuiGrid-md-5, .MuiGrid-md-6, .MuiGrid-md-7, .MuiGrid-md-8, 
+.MuiGrid-md-9, .MuiGrid-md-10, .MuiGrid-md-11, .MuiGrid-md-12 {
+  /* Apply equivalent CSS to fix md props */
+  flex-basis: auto !important;
+  flex-grow: 0 !important;
+}
+
+/* Manually replace common md values with their equivalent flexbox properties */
+.MuiGrid-md-6 {
+  flex: 0 0 50% !important;
+  max-width: 50% !important;
+}
+
+.MuiGrid-md-4 {
+  flex: 0 0 33.333333% !important;
+  max-width: 33.333333% !important;
+}
+
+.MuiGrid-md-3 {
+  flex: 0 0 25% !important;
+  max-width: 25% !important;
+}
+
+.MuiGrid-md-8 {
+  flex: 0 0 66.666667% !important;
+  max-width: 66.666667% !important;
+}
+
+@media (max-width: 960px) {
+  .MuiGrid-md-6, .MuiGrid-md-4, .MuiGrid-md-3, .MuiGrid-md-8 {
+    flex: 0 0 100% !important;
+    max-width: 100% !important;
+  }
+}
+
+/* Main styling fixes */
+main.MuiBox-root {
+  margin-top: 0 !important;
+  padding-bottom: 20px !important;
+  z-index: auto !important;
+}
+
+/* Fix the admin page layout issues */
+body.admin-page .MuiBox-root {
+  position: relative !important;
+}
+
+body.admin-page main {
+  flex-grow: 1 !important;
+  position: relative !important;
+  z-index: 1 !important;
+  margin-top: 0 !important;
+  padding-bottom: 20px !important;
+  width: 100% !important;
+  background-color: #f8f9fa !important;
+}
+
+/* Fix drawer positioning */
+body.admin-page .MuiDrawer-root {
+  position: relative !important;
+  z-index: 1 !important;
+}

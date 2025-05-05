@@ -1,31 +1,22 @@
 import React, { useState, useEffect } from "react";
+import { useRouter } from 'next/router';
 import { Card, CardContent, CardMedia, Typography, Button, Container, CircularProgress, Box, IconButton, Pagination, Snackbar, Alert } from '@mui/material';
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
 import FavoriteIcon from '@mui/icons-material/Favorite';
-import { useRouter } from "next/router";
 import api from "../utils/axios";
 
-const ProductSection = ({ products, loading, error, onAddToCart }) => {
+const CategoriesSmartTv = ({ products, loading, error }) => {
   const [page, setPage] = useState(1);
   const itemsPerPage = 12; // 4 columns × 3 rows
   const router = useRouter();
+  const [addingProductId, setAddingProductId] = useState(null);
+  const [wishlist, setWishlist] = useState([]);
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: '',
     severity: 'success'
   });
-  const [wishlist, setWishlist] = useState([]);
   
-  // Calculate total pages
-  const totalPages = Math.ceil(products.length / itemsPerPage);
-  
-  // Get current page items
-  const getCurrentPageItems = () => {
-    const startIndex = (page - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    return products.slice(startIndex, endIndex);
-  };
-
   // Load wishlist from localStorage on component mount
   useEffect(() => {
     const savedWishlist = localStorage.getItem('wishlist');
@@ -37,14 +28,123 @@ const ProductSection = ({ products, loading, error, onAddToCart }) => {
         setWishlist([]);
       }
     }
+    
+    // Listen for wishlist updates from other components
+    const handleWishlistUpdate = () => {
+      const updatedWishlist = localStorage.getItem('wishlist');
+      if (updatedWishlist) {
+        try {
+          setWishlist(JSON.parse(updatedWishlist));
+        } catch (e) {
+          console.error("Error parsing updated wishlist:", e);
+        }
+      }
+    };
+    
+    window.addEventListener('wishlistUpdated', handleWishlistUpdate);
+    
+    return () => {
+      window.removeEventListener('wishlistUpdated', handleWishlistUpdate);
+    };
   }, []);
+  
+  // Check if product is in wishlist
+  const isInWishlist = (product) => {
+    const productId = product.id || product.productId;
+    return wishlist.some(item => (item.id || item.productId) === productId);
+  };
+  
+  // Handle adding/removing from wishlist
+  const handleWishlistToggle = (e, product) => {
+    e.stopPropagation(); // Prevent card click when clicking the wishlist button
+    
+    // Check if product is already in wishlist
+    const productId = product.id || product.productId;
+    console.log(`Toggling wishlist for product: ${productId}`, product);
+    
+    // Get current wishlist from localStorage first to ensure we're working with latest data
+    let currentWishlist = [];
+    try {
+      const savedWishlist = localStorage.getItem('wishlist');
+      if (savedWishlist) {
+        currentWishlist = JSON.parse(savedWishlist);
+        if (!Array.isArray(currentWishlist)) {
+          console.error('Saved wishlist is not an array, resetting');
+          currentWishlist = [];
+        }
+      }
+    } catch (err) {
+      console.error('Error parsing wishlist from localStorage:', err);
+    }
+    
+    // Check if product is in current wishlist from localStorage
+    const isInWishlist = currentWishlist.some(item => {
+      const itemId = item.id || item.productId;
+      return itemId === productId;
+    });
+    
+    let updatedWishlist;
+    
+    if (isInWishlist) {
+      // Remove from wishlist
+      updatedWishlist = currentWishlist.filter(item => {
+        const itemId = item.id || item.productId;
+        return itemId !== productId;
+      });
+      console.log(`Removed product ${productId} from wishlist`);
+      showFeedback(`${product.title || product.name} removed from wishlist!`);
+    } else {
+      // Create a clean product object with all necessary fields
+      const cleanProduct = {
+        id: productId,
+        productId: productId,
+        name: product.name || product.title || "Product",
+        title: product.title || product.name || "Product",
+        price: product.price || 0,
+        imageUrl: product.imageUrl || "/placeholder.jpg",
+        // Preserve other potentially useful fields
+        category: product.category || null,
+        description: product.description || null
+      };
+      
+      // Add clean product to wishlist
+      updatedWishlist = [...currentWishlist, cleanProduct];
+      console.log(`Added product ${productId} to wishlist:`, cleanProduct);
+      showFeedback(`${product.title || product.name} added to wishlist!`);
+    }
+    
+    // Update state
+    setWishlist(updatedWishlist);
+    
+    // Save to localStorage - use a try-catch to handle potential storage errors
+    console.log('Saving wishlist to localStorage:', updatedWishlist);
+    try {
+      localStorage.setItem('wishlist', JSON.stringify(updatedWishlist));
+    } catch (err) {
+      console.error('Error saving wishlist to localStorage:', err);
+    }
+    
+    // Dispatch event for other components to listen
+    console.log('Dispatching wishlistUpdated event');
+    window.dispatchEvent(new Event('wishlistUpdated'));
+  };
+  
+  // Calculate total pages
+  const totalPages = Math.ceil(products.length / itemsPerPage);
+  
+  // Get current page items
+  const getCurrentPageItems = () => {
+    const startIndex = (page - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return products.slice(startIndex, endIndex);
+  };
 
   // Handle page change
   const handlePageChange = (event, value) => {
     setPage(value);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
-
+  
   // Handle product click to navigate to detail page
   const handleProductClick = (product) => {
     // Store product data in localStorage before navigating
@@ -57,8 +157,8 @@ const ProductSection = ({ products, loading, error, onAddToCart }) => {
     });
   };
 
-  // Handle add to cart - local implementation if no prop is provided
-  const handleAddToCartLocal = async (e, product) => {
+  // Handle add to cart
+  const handleAddToCart = async (e, product) => {
     e.stopPropagation(); // Prevent card click when clicking the button
     
     try {
@@ -71,7 +171,7 @@ const ProductSection = ({ products, loading, error, onAddToCart }) => {
       }
       
       // Add item to cart
-      const response = await api.post(`http://localhost:8083/cart/items/${product.id || product.productId}`);
+      await api.post(`http://localhost:8083/cart/items/${product.id || product.productId}`);
       
       // Store product image in localStorage for cart display
       const cartItemsImages = JSON.parse(localStorage.getItem('cartItemsImages') || '{}');
@@ -81,140 +181,29 @@ const ProductSection = ({ products, loading, error, onAddToCart }) => {
       // Trigger cart updated event for header to update cart count
       window.dispatchEvent(new Event('cartUpdated'));
       
-      // Show success message
-      setSnackbar({
-        open: true,
-        message: response.data?.message || `${product.title || product.name} added to cart!`,
-        severity: 'success'
-      });
     } catch (err) {
       console.error("Error adding item to cart:", err);
-      // Check if the error is related to stock availability
-      const errorMessage = err.response?.data?.message || err.message;
-      setSnackbar({
-        open: true,
-        message: errorMessage.includes('stock') ? errorMessage : "Failed to add item to cart. Please try again.",
-        severity: 'error'
-      });
     }
   };
 
-  // Function to call either the parent's onAddToCart or local implementation
-  const handleCartAction = (e, product) => {
-    if (onAddToCart) {
-      onAddToCart(e, product);
-    } else {
-      handleAddToCartLocal(e, product);
-    }
-  };
-
-  // Handle adding/removing from wishlist
-  const handleWishlistToggle = (e, product) => {
-    e.stopPropagation();
-    console.log('Toggling wishlist for product:', product.title || product.name);
-    
-    try {
-      // Get current wishlist from localStorage to ensure we have the latest data
-      const currentWishlistJson = localStorage.getItem('wishlist');
-      let currentWishlist = [];
-      
-      if (currentWishlistJson) {
-        try {
-          currentWishlist = JSON.parse(currentWishlistJson);
-          if (!Array.isArray(currentWishlist)) {
-            console.error('Stored wishlist is not an array, resetting');
-            currentWishlist = [];
-          }
-        } catch (parseError) {
-          console.error('Error parsing wishlist from localStorage:', parseError);
-        }
-      }
-      
-      // Check if product is already in wishlist
-      const productId = product.id || product.productId;
-      const existingIndex = currentWishlist.findIndex(item => 
-        (item.id === productId) || (item.productId === productId)
-      );
-      
-      let newWishlist;
-      let message;
-      
-      if (existingIndex !== -1) {
-        // Remove from wishlist
-        console.log('Removing product from wishlist:', productId);
-        newWishlist = currentWishlist.filter((_, index) => index !== existingIndex);
-        message = `${product.title || product.name} removed from wishlist`;
-      } else {
-        // Add to wishlist - create a clean product object with all necessary fields
-        console.log('Adding product to wishlist:', productId);
-        const wishlistItem = {
-          id: productId,
-          productId: productId,
-          name: product.name || product.title || "Unknown Product",
-          title: product.title || product.name || "Unknown Product",
-          price: product.price || 0,
-          imageUrl: product.imageUrl || "/placeholder.jpg",
-          category: product.category || "general",
-          description: product.description || ""
-        };
-        newWishlist = [...currentWishlist, wishlistItem];
-        message = `${product.title || product.name} added to wishlist`;
-      }
-      
-      // Update state
-      setWishlist(newWishlist);
-      
-      // Save to localStorage
-      try {
-        localStorage.setItem('wishlist', JSON.stringify(newWishlist));
-        console.log('Wishlist saved to localStorage:', newWishlist);
-      } catch (storageError) {
-        console.error('Error saving wishlist to localStorage:', storageError);
-      }
-      
-      // Show notification
-      setSnackbar({
-        open: true,
-        message: message,
-        severity: 'success'
-      });
-      
-      // Dispatch event for other components to listen
-      const event = new CustomEvent('wishlistUpdated', { detail: newWishlist });
-      window.dispatchEvent(event);
-      console.log('wishlistUpdated event dispatched');
-      
-    } catch (error) {
-      console.error('Error updating wishlist:', error);
-      setSnackbar({
-        open: true,
-        message: 'Failed to update wishlist',
-        severity: 'error'
-      });
-    }
-  };
-
-  // Check if product is in wishlist
-  const isInWishlist = (product) => {
-    const productId = product.id || product.productId;
-    return wishlist.some(item => (item.id || item.productId) === productId);
-  };
-
-  // Handle snackbar close
-  const handleSnackbarClose = () => {
-    setSnackbar({...snackbar, open: false});
+  const showFeedback = (message) => {
+    setSnackbar({
+      open: true,
+      message: message,
+      severity: 'success'
+    });
   };
 
   return (
     <Container 
-     maxWidth={false} 
-     sx={{ 
-       backgroundColor: '#f5f5f5', 
-       py: 4, 
-       borderRadius: 2,
-       px: { xs: 2, sm: 4, md: 6, lg: 8, xl: 10 }
-     }}
-   >
+    maxWidth={false} 
+    sx={{ 
+      backgroundColor: '#f5f5f5', 
+      py: 4, 
+      borderRadius: 2,
+      px: { xs: 2, sm: 4, md: 6, lg: 8, xl: 10 }
+    }}
+  >
       <Typography 
         variant="h4" 
         component="h2" 
@@ -227,10 +216,11 @@ const ProductSection = ({ products, loading, error, onAddToCart }) => {
           display: 'block',
           position: 'relative',
           zIndex: 1,
+          marginTop: 10,
           marginLeft: 15,
         }}
       >
-        Бүтээгдэхүүн
+        Ухаалаг дэлгэц
       </Typography>
       {error && <Typography color="error">{error}</Typography>}
 
@@ -273,7 +263,7 @@ const ProductSection = ({ products, loading, error, onAddToCart }) => {
                     cursor: 'pointer',
                     transition: 'transform 0.2s, box-shadow 0.2s',
                     '&:hover': {
-                      transform: 'translateY(-5px)',
+                      transform: 'translateY(-4px)',
                       boxShadow: '0 6px 16px rgba(0,0,0,0.15)'
                     }
                   }}
@@ -285,7 +275,7 @@ const ProductSection = ({ products, loading, error, onAddToCart }) => {
                       position: 'absolute',
                       right: 8,
                       top: 8,
-                      color: 'red',
+                      color: isInWishlist(product) ? 'red' : 'grey',
                       zIndex: 1
                     }}
                     onClick={(e) => handleWishlistToggle(e, product)}
@@ -393,7 +383,7 @@ const ProductSection = ({ products, loading, error, onAddToCart }) => {
                             backgroundColor: 'rgba(0,0,0,0.04)'
                           }
                         }}
-                        onClick={(e) => handleCartAction(e, product)}
+                        onClick={(e) => handleAddToCart(e, product)}
                       >
                         Add to cart
                       </Button>
@@ -429,24 +419,18 @@ const ProductSection = ({ products, loading, error, onAddToCart }) => {
         </>
       )}
 
-      {/* Snackbar for notifications */}
-      <Snackbar 
-        open={snackbar.open} 
-        autoHideDuration={3000} 
-        onClose={handleSnackbarClose}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
       >
-        <Alert 
-          onClose={handleSnackbarClose} 
-          severity={snackbar.severity}
-          variant="filled"
-          sx={{ width: '100%' }}
-        >
+        <Alert onClose={() => setSnackbar({ ...snackbar, open: false })} severity={snackbar.severity}>
           {snackbar.message}
         </Alert>
       </Snackbar>
+
     </Container>
   );
 };
 
-export default ProductSection;
+export default CategoriesSmartTv;
