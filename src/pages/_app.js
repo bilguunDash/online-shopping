@@ -2,11 +2,16 @@ import React, { useState, useEffect } from 'react';
 import '../styles/globals.css';
 import Head from 'next/head';
 import { CacheProvider } from '@emotion/react';
-import { ThemeProvider, CssBaseline, createTheme } from '@mui/material';
+import { ThemeProvider, CssBaseline, createTheme, Snackbar, Alert } from '@mui/material';
 import createCache from '@emotion/cache';
 import { prefixer } from 'stylis';
-import Footer from '../components/Footer';
+import Footer from '../components/layout/Footer';
 import rtlPlugin from 'stylis-plugin-rtl';
+import { StyledEngineProvider } from '@mui/material/styles';
+// Import Swiper CSS correctly from node_modules (assuming it's installed)
+import 'swiper/css';
+import 'swiper/css/navigation';
+import 'swiper/css/pagination';
 
 // Create rtl and ltr caches
 const cacheRtl = createCache({
@@ -22,6 +27,7 @@ const cacheLtr = createCache({
 function MyApp({ Component, pageProps }) {
   const [isClient, setIsClient] = useState(false);
   const [darkMode, setDarkMode] = useState(false);  // Default to light mode
+  const [authError, setAuthError] = useState(null);
 
   useEffect(() => {
     setIsClient(true);
@@ -31,26 +37,62 @@ function MyApp({ Component, pageProps }) {
       setDarkMode(savedMode === 'true');
     }
   }, []);
+  
+  // Add global auth error handler
+  useEffect(() => {
+    // Function to handle auth errors
+    const handleAuthError = (event) => {
+      console.log('Global auth error caught:', event.detail);
+      setAuthError({
+        message: event.detail?.message || 'Authentication error. Please log in again.',
+        timestamp: new Date().getTime()
+      });
+      
+      // Optional: Redirect to login page after a delay
+      // setTimeout(() => {
+      //   window.location.href = '/login';
+      // }, 3000);
+    };
+    
+    // Add event listener
+    window.addEventListener('authError', handleAuthError);
+    
+    // Clean up
+    return () => {
+      window.removeEventListener('authError', handleAuthError);
+    };
+  }, []);
+
+  // Clear auth error after 5 seconds
+  useEffect(() => {
+    if (authError) {
+      const timer = setTimeout(() => {
+        setAuthError(null);
+      }, 5000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [authError]);
 
   // Define dark theme
   const darkTheme = createTheme({
     palette: {
       mode: 'dark',
       primary: {
-        main: '#585ae4',
+        main: '#8286ff',
         light: '#7879ff',
         dark: '#4748b1',
         contrastText: '#ffffff',
       },
       secondary: {
-        main: '#8e24aa',
+        main: '#bb6bc9',
         light: '#c158dc',
         dark: '#5c007a',
         contrastText: '#ffffff',
       },
       background: {
-        default: '#121212',
-        paper: '#1e1e1e',
+        default: '#121220',
+        paper: '#1e1e2d',
       },
       text: {
         primary: 'rgba(255, 255, 255, 0.87)',
@@ -139,9 +181,7 @@ function MyApp({ Component, pageProps }) {
   const toggleDarkMode = () => {
     const newMode = !darkMode;
     setDarkMode(newMode);
-    if (isClient) {
-      localStorage.setItem('darkMode', newMode);
-    }
+    localStorage.setItem('darkMode', newMode.toString());
   };
 
   // Use appropriate cache based on direction (if needed in the future)
@@ -153,8 +193,14 @@ function MyApp({ Component, pageProps }) {
                       pageProps.isAdminPage || 
                       (typeof window !== 'undefined' && window.location.pathname.includes('/admin/'));
 
+  // Prevent hydration mismatch by only rendering once on client
+  if (!isClient) {
+    return null; // Return nothing on first render
+  }
+
   return (
     <CacheProvider value={cache}>
+      <StyledEngineProvider injectFirst>
       <ThemeProvider theme={darkMode ? darkTheme : lightTheme}>
         <CssBaseline />
         <Head>
@@ -179,12 +225,32 @@ function MyApp({ Component, pageProps }) {
             </>
           )}
         </Head>
+        
+        {/* Global Auth Error Alert */}
+        <Snackbar
+          open={!!authError}
+          autoHideDuration={5000}
+          onClose={() => setAuthError(null)}
+          anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+          sx={{ marginTop: '64px' }} // Position below app bar
+        >
+          <Alert
+            severity="error"
+            variant="filled"
+            onClose={() => setAuthError(null)}
+            sx={{ width: '100%' }}
+          >
+            {authError?.message}
+          </Alert>
+        </Snackbar>
+        
         {/* Always render the Component with props, regardless of page type */}
         <Component {...pageProps} darkMode={darkMode} toggleDarkMode={toggleDarkMode} />
         
         {/* Only show Footer on non-admin pages */}
         {!isAdminPage && <Footer darkMode={darkMode} />}
       </ThemeProvider>
+      </StyledEngineProvider>
     </CacheProvider>
   );
 }

@@ -29,6 +29,7 @@ const Register = ({ darkMode, toggleDarkMode }) => {
     firstname: "",
     lastname: "",
     email: "",
+    phone: "",
     password: "",
     role: "USER"
   });
@@ -78,10 +79,10 @@ const Register = ({ darkMode, toggleDarkMode }) => {
 
   const getStrengthLabel = () => {
     if (passwordStrength === 0) return "";
-    if (passwordStrength < 50) return "Weak";
-    if (passwordStrength < 75) return "Medium";
-    if (passwordStrength < 100) return "Strong";
-    return "Very strong";
+    if (passwordStrength < 50) return "Сул";
+    if (passwordStrength < 75) return "Дунд";
+    if (passwordStrength < 100) return "Хүчтэй";
+    return "Маш хүчтэй";
   };
 
   const handleInputChange = (e) => {
@@ -96,29 +97,35 @@ const Register = ({ darkMode, toggleDarkMode }) => {
     const newErrors = {};
     
     if (!form.firstname.trim()) {
-      newErrors.firstname = "First name is required";
+      newErrors.firstname = "Нэр оруулна уу";
     }
     
     if (!form.lastname.trim()) {
-      newErrors.lastname = "Last name is required";
+      newErrors.lastname = "Овог оруулна уу";
     }
     
     if (!form.email.trim()) {
-      newErrors.email = "Email is required";
+      newErrors.email = "И-мэйл оруулна уу";
     } else if (!/\S+@\S+\.\S+/.test(form.email)) {
-      newErrors.email = "Email is invalid";
+      newErrors.email = "И-мэйл хаяг буруу байна";
+    }
+    
+    if (!form.phone.trim()) {
+      newErrors.phone = "Утасны дугаар оруулна уу";
+    } else if (!/^\d{8}$/.test(form.phone)) {
+      newErrors.phone = "Утасны дугаар 8 оронтой байх ёстой";
     }
     
     if (!form.password) {
-      newErrors.password = "Password is required";
+      newErrors.password = "Нууц үг оруулна уу";
     } else if (form.password.length < 8) {
-      newErrors.password = "Password must be at least 8 characters";
+      newErrors.password = "Нууц үг хамгийн багадаа 8 тэмдэгт байх ёстой";
     } else if (passwordStrength < 50) {
-      newErrors.password = "Password is too weak";
+      newErrors.password = "Нууц үг хэтэрхий сул байна";
     }
     
     if (!agreeToTerms) {
-      newErrors.terms = "You must agree to the Terms of Service";
+      newErrors.terms = "Үйлчилгээний нөхцөлийг зөвшөөрөх шаардлагатай";
     }
     
     setErrors(newErrors);
@@ -299,12 +306,12 @@ const Register = ({ darkMode, toggleDarkMode }) => {
                 fontWeight: 600
               }}
             >
-              <PersonAddIcon /> Create Account
+              <PersonAddIcon /> Бүртгүүлэх
             </Typography>
             
             <Box sx={{ mb: 3 }}>
               <Typography variant="subtitle1" component="label" sx={{ mb: 1, display: 'block' }}>
-                First Name *
+                Нэр *
               </Typography>
               <TextField
                 fullWidth
@@ -314,7 +321,7 @@ const Register = ({ darkMode, toggleDarkMode }) => {
                 onChange={handleInputChange}
                 error={!!errors.firstname}
                 helperText={errors.firstname}
-                placeholder="First Name"
+                placeholder="Нэр"
                 InputProps={{
                   sx: {
                     bgcolor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'white',
@@ -329,7 +336,7 @@ const Register = ({ darkMode, toggleDarkMode }) => {
             
             <Box sx={{ mb: 3 }}>
               <Typography variant="subtitle1" component="label" sx={{ mb: 1, display: 'block' }}>
-                Last Name *
+                Овог *
               </Typography>
               <TextField
                 fullWidth
@@ -339,7 +346,7 @@ const Register = ({ darkMode, toggleDarkMode }) => {
                 onChange={handleInputChange}
                 error={!!errors.lastname}
                 helperText={errors.lastname}
-                placeholder="Last Name"
+                placeholder="Овог"
                 InputProps={{
                   sx: {
                     bgcolor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'white',
@@ -354,7 +361,7 @@ const Register = ({ darkMode, toggleDarkMode }) => {
             
             <Box sx={{ mb: 3 }}>
               <Typography variant="subtitle1" component="label" sx={{ mb: 1, display: 'block' }}>
-                Email Address *
+                И-мэйл хаяг *
               </Typography>
               <TextField
                 fullWidth
@@ -365,7 +372,7 @@ const Register = ({ darkMode, toggleDarkMode }) => {
                 onChange={handleInputChange}
                 error={!!errors.email}
                 helperText={errors.email}
-                placeholder="john.doe@example.com"
+                placeholder="example@mail.com"
                 InputProps={{
                   sx: {
                     bgcolor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'white',
@@ -385,7 +392,38 @@ const Register = ({ darkMode, toggleDarkMode }) => {
             
             <Box sx={{ mb: 3 }}>
               <Typography variant="subtitle1" component="label" sx={{ mb: 1, display: 'block' }}>
-                Password *
+                Утасны дугаар *
+              </Typography>
+              <TextField
+                fullWidth
+                name="phone"
+                type="tel"
+                variant="outlined"
+                value={form.phone}
+                onChange={handleInputChange}
+                error={!!errors.phone}
+                helperText={errors.phone}
+                placeholder="99112233"
+                InputProps={{
+                  sx: {
+                    bgcolor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'white',
+                    borderRadius: '8px',
+                    '& .MuiOutlinedInput-notchedOutline': {
+                      borderColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'
+                    }
+                  },
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <InfoIcon fontSize="small" color="action" />
+                    </InputAdornment>
+                  )
+                }}
+              />
+            </Box>
+            
+            <Box sx={{ mb: 3 }}>
+              <Typography variant="subtitle1" component="label" sx={{ mb: 1, display: 'block' }}>
+                Нууц үг *
               </Typography>
               <TextField
                 fullWidth
@@ -421,7 +459,7 @@ const Register = ({ darkMode, toggleDarkMode }) => {
               {form.password && (
                 <Box sx={{ mt: 1 }}>
                   <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 0.5 }}>
-                    Password should be at least 8 characters with uppercase, lowercase and numbers
+                    Нууц үг хамгийн багадаа 8 тэмдэгт, том, жижиг үсэг, тоо агуулсан байх ёстой
                   </Typography>
                   <Box sx={{ display: 'flex', alignItems: 'center' }}>
                     <LinearProgress 
@@ -448,7 +486,7 @@ const Register = ({ darkMode, toggleDarkMode }) => {
             
             <Box sx={{ mb: 3 }}>
               <Typography variant="subtitle1" component="label" sx={{ mb: 1, display: 'block' }}>
-                Confirm Password *
+                Нууц үг баталгаажуулах *
               </Typography>
               <TextField
                 fullWidth
@@ -501,14 +539,14 @@ const Register = ({ darkMode, toggleDarkMode }) => {
                 }
                 label={
                   <Typography variant="body2">
-                    I agree to the {' '}
+                    Би {' '}
                     <Link href="/terms" style={{ color: theme.palette.primary.main }}>
-                      Terms of Service
+                      Үйлчилгээний нөхцөл
                     </Link>{' '}
-                    and{' '}
+                    болон{' '}
                     <Link href="/privacy" style={{ color: theme.palette.primary.main }}>
-                      Privacy Policy
-                    </Link>
+                      Нууцлалын бодлого
+                    </Link>-тай танилцаж зөвшөөрч байна
                   </Typography>
                 }
                 sx={{ ml: -1 }}
@@ -536,18 +574,18 @@ const Register = ({ darkMode, toggleDarkMode }) => {
                 },
               }}
             >
-              {isSubmitting ? "Creating Account..." : "Create Account"}
+              {isSubmitting ? "Бүртгэл үүсгэж байна..." : "Бүртгүүлэх"}
             </Button>
             
             <Box sx={{ textAlign: 'center', mt: 3 }}>
               <Typography variant="body2" color="textSecondary">
-                Already have an account?{' '}
+                Бүртгэлтэй юу?{' '}
                 <Link href="/login" style={{ 
                   color: theme.palette.primary.main,
                   textDecoration: 'none',
                   fontWeight: 500,
                 }}>
-                  Sign In
+                  Нэвтрэх
                 </Link>
               </Typography>
             </Box>

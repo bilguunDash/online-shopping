@@ -1,7 +1,7 @@
     // pages/About.js
     import React from "react";
-    import Layout from "../components/Layout";
-    import AboutSection from "../components/AboutSection";
+    import Layout from "../components/layout/Layout";
+    import AboutSection from "../components/pages/AboutSection";
 
     const AboutPage = ({ darkMode, toggleDarkMode }) => {
         return (

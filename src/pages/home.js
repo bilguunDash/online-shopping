@@ -1,15 +1,15 @@
 // pages/home.js
 import React, { useState, useEffect } from "react";
-import Banner from "../components/Banner";
-import FeatureBoxes from "../components/FeatureBoxes";
-import ProductSection from "../components/ProductSection";
-import LaptopPromo from "../components/LaptopPromo";
-import CustomerReviews from "../components/CustomerReviews";
-import ContactForm from "../components/ContactForm";
+import Banner from "../components/layout/Banner";
+import FeatureBoxes from "../components/common/FeatureBoxes";
+import ProductSection from "../components/products/ProductSection";
+import LaptopPromo from "../components/common/LaptopPromo";
+import CustomerReviews from "../components/common/CustomerReviews";
+import ContactForm from "../components/common/ContactForm";
 import noAuthApi from "../utils/noAuthApi";
 import { Box } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
-import Layout from "../components/Layout";
+import Layout from "../components/layout/Layout";
 
 const Home = ({ darkMode, toggleDarkMode }) => {
   const [products, setProducts] = useState([]);

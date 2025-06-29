@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
-import api from "../utils/axios";
+import api, { decodeToken } from "../utils/axios";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import Link from "next/link";
@@ -68,7 +68,7 @@ const Login = ({ darkMode, toggleDarkMode }) => {
 
     // Simple validation
     if (!formData.email || !formData.password) {
-      setErrorMsg("Please fill in all fields");
+      setErrorMsg("Бүх талбарыг бөглөнө үү");
       setLoading(false);
       return;
     }
@@ -80,36 +80,42 @@ const Login = ({ darkMode, toggleDarkMode }) => {
       console.log("Login response:", response.data);
       
       // Check if we have a token
-      if (response.data && response.data.token) {
-        // Store user data in localStorage
-        localStorage.setItem("jwt", response.data.token);
+      if (response.data && response.data.accessToken) {
+        // Store token in localStorage
+        localStorage.setItem("jwt", response.data.accessToken);
         
-        // Make sure firstName and lastName are properly stored
-        // Handle both direct properties and nested user object
+        // Store refresh token if available
+        if (response.data.refreshToken) {
+          localStorage.setItem("refreshToken", response.data.refreshToken);
+        }
+        
+        // Store user information from API response
         if (response.data.firstName) {
           localStorage.setItem("firstName", response.data.firstName);
-        } else if (response.data.user && response.data.user.firstName) {
-          localStorage.setItem("firstName", response.data.user.firstName);
-        } else {
-          localStorage.setItem("firstName", "User");
         }
         
         if (response.data.lastName) {
           localStorage.setItem("lastName", response.data.lastName);
-        } else if (response.data.user && response.data.user.lastName) {
-          localStorage.setItem("lastName", response.data.user.lastName);
-        } else {
-          localStorage.setItem("lastName", "");
         }
         
-        // Store user role in localStorage
-        const userRole = response.data.role || (response.data.user && response.data.user.role) || "USER";
-        localStorage.setItem("role", userRole);
+        if (response.data.role) {
+          localStorage.setItem("role", response.data.role);
+        }
+        
+        if (response.data.id) {
+          localStorage.setItem("userId", response.data.id.toString());
+        }
+        
+        // Decode token and extract user information
+        const userInfo = decodeToken(response.data.accessToken);
+        
+        // Use role from decoded token or API response
+        const userRole = response.data.role || (userInfo && userInfo.role) || "USER";
         
         // Force rerender of header by setting a timestamp
         localStorage.setItem("lastAuthUpdate", Date.now().toString());
         
-        toast.success("🎉 Login successful!", {
+        toast.success("🎉 Амжилттай нэвтэрлээ!", {
           position: "top-right",
           autoClose: 3000,
           hideProgressBar: false,
@@ -130,8 +136,8 @@ const Login = ({ darkMode, toggleDarkMode }) => {
           }
         }, 500);
       } else {
-        setErrorMsg(response.data.message || "Login failed. Please check your credentials.");
-        toast.error(response.data.message || "Login failed. Please check your credentials.", {
+        setErrorMsg(response.data.message || "Нэвтрэх үйлдэл амжилтгүй. Мэдээллээ шалгана уу.");
+        toast.error(response.data.message || "Нэвтрэх үйлдэл амжилтгүй. Мэдээллээ шалгана уу.", {
           position: "top-right",
           autoClose: 3000,
           hideProgressBar: false,
@@ -146,7 +152,7 @@ const Login = ({ darkMode, toggleDarkMode }) => {
       console.error("Login error:", error);
       
       // More detailed error handling
-      let errorMessage = "An error occurred during login. Please try again.";
+      let errorMessage = "Нэвтрэх явцад алдаа гарлаа. Дахин оролдоно уу.";
       
       if (error.response) {
         // The request was made and the server responded with a status code
@@ -155,14 +161,14 @@ const Login = ({ darkMode, toggleDarkMode }) => {
         console.error("Error response status:", error.response.status);
         
         if (error.response.status === 401) {
-          errorMessage = "Invalid email or password. Please try again.";
+          errorMessage = "И-мэйл эсвэл нууц үг буруу байна. Дахин оролдоно уу.";
         } else if (error.response.data && error.response.data.message) {
           errorMessage = error.response.data.message;
         }
       } else if (error.request) {
         // The request was made but no response was received
         console.error("Error request:", error.request);
-        errorMessage = "No response from server. Please check your internet connection.";
+        errorMessage = "Серверээс хариу ирсэнгүй. Интернэт холболтоо шалгана уу.";
       }
       
       setErrorMsg(errorMessage);
@@ -250,7 +256,7 @@ const Login = ({ darkMode, toggleDarkMode }) => {
               WebkitTextFillColor: 'transparent',
             }}
           >
-             .
+            Нэвтрэх
           </Typography>
           
           {errorMsg && (
@@ -277,7 +283,7 @@ const Login = ({ darkMode, toggleDarkMode }) => {
               required
               fullWidth
               id="email"
-              label="Email Address"
+              label="И-мэйл хаяг"
               name="email"
               autoComplete="email"
               autoFocus
@@ -300,7 +306,7 @@ const Login = ({ darkMode, toggleDarkMode }) => {
               required
               fullWidth
               name="password"
-              label="Password"
+              label="Нууц үг"
               type={showPassword ? 'text' : 'password'}
               id="password"
               autoComplete="current-password"
@@ -341,7 +347,7 @@ const Login = ({ darkMode, toggleDarkMode }) => {
                     }
                   }}
                 >
-                  Forgot password?
+                  Нууц үгээ мартсан уу?
                 </Typography>
               </Link>
             </Box>
@@ -376,7 +382,7 @@ const Login = ({ darkMode, toggleDarkMode }) => {
                   }} 
                 />
               ) : (
-                'Sign In'
+                'Нэвтрэх'
               )}
             </Button>
             
@@ -386,13 +392,13 @@ const Login = ({ darkMode, toggleDarkMode }) => {
                 color="text.secondary"
                 sx={{ px: 1 }}
               >
-                OR
+                ЭСВЭЛ
               </Typography>
             </Divider>
             
             <Box sx={{ textAlign: 'center' }}>
               <Typography variant="body2">
-                Don't have an account?{' '}
+                Бүртгэл байхгүй юу?{' '}
                 <Link href="/register" passHref>
                   <Typography 
                     component="a" 
@@ -406,7 +412,7 @@ const Login = ({ darkMode, toggleDarkMode }) => {
                       }
                     }}
                   >
-                    Sign Up
+                    Бүртгүүлэх
                   </Typography>
                 </Link>
               </Typography>
@@ -430,7 +436,7 @@ const Login = ({ darkMode, toggleDarkMode }) => {
                 }
               }}
             >
-              Return to Home Page
+              Нүүр хуудас руу буцах
             </Typography>
           </Link>
           
@@ -441,7 +447,7 @@ const Login = ({ darkMode, toggleDarkMode }) => {
               color: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.4)',
             }}
           >
-            &copy; {new Date().getFullYear()} Tech Shopping. All rights reserved.
+            &copy; {new Date().getFullYear()} Tech Shopping. Бүх эрх хуулиар хамгаалагдсан.
           </Typography>
         </Box>
       </Container>

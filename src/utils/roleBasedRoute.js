@@ -1,5 +1,6 @@
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
+import { decodeToken } from './axios';
 
 /**
  * Higher-order component for role-based route protection
@@ -18,13 +19,26 @@ const roleBasedRoute = (WrappedComponent, allowedRole = "USER") => {
       if (typeof window === 'undefined') return;
 
       const token = localStorage.getItem('jwt');
-      const userRole = localStorage.getItem('role');
       
       // If no token, redirect to login
       if (!token) {
+        console.log("No authentication token found, redirecting to login");
         router.push('/login');
         return;
       }
+      
+      // Decode token to get user info
+      const userInfo = decodeToken(token);
+      
+      // If token is invalid, redirect to login
+      if (!userInfo) {
+        console.log("Invalid token, redirecting to login");
+        router.push('/login');
+        return;
+      }
+      
+      const userRole = userInfo.role;
+      console.log(`User role: ${userRole}, Required role: ${allowedRole}`);
       
       // For ADMIN routes, only allow ADMIN users
       if (allowedRole === "ADMIN" && userRole !== "ADMIN") {
@@ -41,9 +55,10 @@ const roleBasedRoute = (WrappedComponent, allowedRole = "USER") => {
       }
       
       // User is authorized
+      console.log("User authorized to access this route");
       setIsAuthorized(true);
       setLoading(false);
-    }, [router]);
+    }, [router, allowedRole]);
     
     // Show nothing while checking authorization or redirecting
     if (loading && !isAuthorized) {

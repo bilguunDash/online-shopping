@@ -18,7 +18,7 @@ import {
   IconButton
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
-import AdminHeader from '../../components/AdminHeader';
+import AdminHeader from '../../components/admin/AdminHeader';
 import SaveIcon from '@mui/icons-material/Save';
 import ResetIcon from '@mui/icons-material/RestartAlt';
 import ImageIcon from '@mui/icons-material/Image';
@@ -205,7 +205,7 @@ const AdminSettings = ({ darkMode, toggleDarkMode }) => {
       }
       setError(null);
     } catch (err) {
-      setError('Failed to load banner data. Using default data.');
+      setError('Баннерын мэдээлэл уншихад алдаа гарлаа. Үндсэн мэдээллийг ашиглаж байна.');
       console.error('Error loading banner data:', err);
       
       // Fallback to default data on error
@@ -272,7 +272,7 @@ const AdminSettings = ({ darkMode, toggleDarkMode }) => {
     }));
     
     // Show success message
-    setSuccess('Banner successfully updated!');
+    setSuccess('Баннер амжилттай шинэчлэгдлээ!');
     setTimeout(() => setSuccess(null), 3000);
   };
   
@@ -299,12 +299,12 @@ const AdminSettings = ({ darkMode, toggleDarkMode }) => {
     }));
     
     // Show success message
-    setSuccess('Banner reset to default!');
+    setSuccess('Баннер анхны төлөвт оруулагдлаа!');
     setTimeout(() => setSuccess(null), 3000);
   };
   
   const handleResetAllBanners = () => {
-    if (confirm('Are you sure you want to reset all banners to default?')) {
+    if (confirm('Та бүх баннерыг анхны төлөвт оруулахдаа итгэлтэй байна уу?')) {
       // Reset all banners to default
       setBannerData(defaultBannerData);
       setSelectedBanner(defaultBannerData[currentTab]);
@@ -319,7 +319,7 @@ const AdminSettings = ({ darkMode, toggleDarkMode }) => {
       }));
       
       // Show success message
-      setSuccess('All banners reset to default!');
+      setSuccess('Бүх баннер анхны төлөвт амжилттай оруулагдлаа!');
       setTimeout(() => setSuccess(null), 3000);
     }
   };
@@ -347,7 +347,7 @@ const AdminSettings = ({ darkMode, toggleDarkMode }) => {
         <Container maxWidth="lg">
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
             <Typography variant="h4" sx={{ fontWeight: 700, color: theme.palette.text.primary }}>
-              Banner Settings
+              Баннерын тохиргоо
             </Typography>
             <Button 
               variant="outlined" 
@@ -355,7 +355,7 @@ const AdminSettings = ({ darkMode, toggleDarkMode }) => {
               onClick={handleResetAllBanners}
               startIcon={<ResetIcon />}
             >
-              Reset All Banners
+              Бүх баннерыг анхны төлөвт оруулах
             </Button>
           </Box>
           
@@ -391,15 +391,15 @@ const AdminSettings = ({ darkMode, toggleDarkMode }) => {
               <Grid item xs={12} md={6}>
                 <Card sx={{ p: 2, height: '100%' }}>
                   <Typography variant="h6" gutterBottom>
-                    Edit Banner
+                    Баннер засварлах
                   </Typography>
                   
                   <Box sx={{ mb: 2 }}>
                     <Typography variant="subtitle2" gutterBottom>
-                      Banner Image
+                      Баннерын зураг
                     </Typography>
                     <BannerImage url={editedBanner.image}>
-                      {!editedBanner.image && <Typography>No image selected</Typography>}
+                      {!editedBanner.image && <Typography>Зураг сонгоогүй байна</Typography>}
                     </BannerImage>
                     <Button
                       variant="outlined"
@@ -407,7 +407,7 @@ const AdminSettings = ({ darkMode, toggleDarkMode }) => {
                       fullWidth
                       startIcon={<ImageIcon />}
                     >
-                      Change Image
+                      Зураг сонгох
                       <input type="file" hidden accept="image/*" onChange={handleImageChange} />
                     </Button>
                   </Box>
@@ -416,13 +416,13 @@ const AdminSettings = ({ darkMode, toggleDarkMode }) => {
                   
                   <Box sx={{ mb: 2 }}>
                     <Typography variant="subtitle2" gutterBottom>
-                      Banner Text
+                      Баннерын текст
                     </Typography>
                     
                     <StyledTextField
                       fullWidth
                       margin="normal"
-                      label="Tagline"
+                      label="Тайлбар"
                       name="tagline"
                       value={editedBanner.tagline}
                       onChange={handleInputChange}
@@ -432,7 +432,7 @@ const AdminSettings = ({ darkMode, toggleDarkMode }) => {
                     <StyledTextField
                       fullWidth
                       margin="normal"
-                      label="Title"
+                      label="Гарчиг"
                       name="title"
                       value={editedBanner.title}
                       onChange={handleInputChange}
@@ -442,7 +442,7 @@ const AdminSettings = ({ darkMode, toggleDarkMode }) => {
                     <StyledTextField
                       fullWidth
                       margin="normal"
-                      label="Description"
+                      label="Дэлгэрэнгүй"
                       name="description"
                       value={editedBanner.description}
                       onChange={handleInputChange}
@@ -456,7 +456,7 @@ const AdminSettings = ({ darkMode, toggleDarkMode }) => {
                         <StyledTextField
                           fullWidth
                           margin="normal"
-                          label="Primary CTA"
+                          label="Үндсэн товчлуур"
                           name="primaryCta"
                           value={editedBanner.primaryCta}
                           onChange={handleInputChange}
@@ -466,7 +466,7 @@ const AdminSettings = ({ darkMode, toggleDarkMode }) => {
                         <StyledTextField
                           fullWidth
                           margin="normal"
-                          label="Secondary CTA"
+                          label="Хоёрдогч товчлуур"
                           name="secondaryCta"
                           value={editedBanner.secondaryCta}
                           onChange={handleInputChange}
@@ -482,7 +482,7 @@ const AdminSettings = ({ darkMode, toggleDarkMode }) => {
                       onClick={handleResetBanner}
                       startIcon={<ResetIcon />}
                     >
-                      Reset to Default
+                      Анхны төлөвт оруулах
                     </Button>
                     <Button 
                       variant="contained" 
@@ -490,7 +490,7 @@ const AdminSettings = ({ darkMode, toggleDarkMode }) => {
                       onClick={handleSaveBanner}
                       startIcon={<SaveIcon />}
                     >
-                      Save Changes
+                      Хадгалах
                     </Button>
                   </Box>
                 </Card>
@@ -499,7 +499,7 @@ const AdminSettings = ({ darkMode, toggleDarkMode }) => {
               <Grid item xs={12} md={6}>
                 <Card sx={{ p: 2, height: '100%' }}>
                   <Typography variant="h6" gutterBottom>
-                    Banner Preview
+                    Баннер урьдчилан харах
                   </Typography>
                   
                   <BannerPreview>
@@ -543,7 +543,7 @@ const AdminSettings = ({ darkMode, toggleDarkMode }) => {
                   
                   <Box sx={{ mt: 3 }}>
                     <Typography variant="subtitle2" gutterBottom>
-                      Banner JSON Data
+                      Баннерын JSON өгөгдөл
                     </Typography>
                     <Box 
                       sx={{ 

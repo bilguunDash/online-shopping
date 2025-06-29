@@ -20,18 +20,18 @@ import {
   Card,
   CardMedia,
   CardContent,
-  Breadcrumbs
+  Breadcrumbs,
+  IconButton
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
-import AdminHeader from '../../components/AdminHeader';
+import AdminHeader from '../../components/admin/AdminHeader';
 import Link from 'next/link';
 // Icons
 import EditIcon from '@mui/icons-material/Edit';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import HomeIcon from '@mui/icons-material/Home';
+import CloseIcon from '@mui/icons-material/Close';
 import api from '../../utils/axios';
-
-const drawerWidth = 0;
 
 const Main = styled('main')(({ theme }) => ({
   flexGrow: 1,
@@ -145,8 +145,17 @@ const AdminProdEdit = ({ darkMode, toggleDarkMode }) => {
     storageGb: '',
     ramGb: '',
     imageUrl: '',
-    viewType: 'FRONT'
+    viewType: 'FRONT',
+    processor: '',
+    os: '',
+    graphics: '',
+    display: '',
+    model: '',
+    productImages: [] // Add array for multiple images
   });
+
+  // State for managing current image being added
+  const [currentImage, setCurrentImage] = useState({ imageUrl: '', viewType: 'FRONT' });
 
   useEffect(() => {
     // Check if user is logged in
@@ -183,19 +192,54 @@ const AdminProdEdit = ({ darkMode, toggleDarkMode }) => {
         throw new Error("Product not found");
       }
       
-      setProductForm({
-        name: productData.name || '',
-        desc: productData.desc || '',
-        price: productData.price || '',
-        stock: productData.stock || '',
-        catId: productData.catId || '',
-        catItemId: productData.catItemId || '',
-        color: productData.color || '',
-        storageGb: productData.storageGb || '',
-        ramGb: productData.ramGb || '',
-        imageUrl: productData.imageUrl || '',
-        viewType: productData.viewType || 'FRONT'
-      });
+      // If product has productImages array, use it
+      if (productData.productImages && Array.isArray(productData.productImages) && productData.productImages.length > 0) {
+        console.log("Product has multiple images:", productData.productImages);
+        
+        // Get main image URL (FRONT view by default)
+        const mainImageUrl = getImageUrlByViewType(productData.productImages, 'FRONT') || productData.imageUrl || '';
+        
+        setProductForm({
+          name: productData.name || '',
+          desc: productData.desc || '',
+          price: productData.price || '',
+          stock: productData.stock || '',
+          catId: productData.catId || '',
+          catItemId: productData.catItemId || '',
+          color: productData.color || '',
+          storageGb: productData.storageGb || '',
+          ramGb: productData.ramGb || '',
+          imageUrl: mainImageUrl,
+          viewType: 'FRONT',
+          processor: productData.processor || '',
+          os: productData.os || '',
+          graphics: productData.graphics || '',
+          display: productData.display || '',
+          model: productData.model || '',
+          productImages: productData.productImages || []
+        });
+      } else {
+        // If no productImages array, use the single imageUrl
+        setProductForm({
+          name: productData.name || '',
+          desc: productData.desc || '',
+          price: productData.price || '',
+          stock: productData.stock || '',
+          catId: productData.catId || '',
+          catItemId: productData.catItemId || '',
+          color: productData.color || '',
+          storageGb: productData.storageGb || '',
+          ramGb: productData.ramGb || '',
+          imageUrl: productData.imageUrl || '',
+          viewType: productData.viewType || 'FRONT',
+          processor: productData.processor || '',
+          os: productData.os || '',
+          graphics: productData.graphics || '',
+          display: productData.display || '',
+          model: productData.model || '',
+          productImages: productData.imageUrl ? [{ imageUrl: productData.imageUrl, viewType: productData.viewType || 'FRONT' }] : []
+        });
+      }
       
       // If the product has a category, fetch its items
       if (productData.catId) {
@@ -248,19 +292,86 @@ const AdminProdEdit = ({ darkMode, toggleDarkMode }) => {
     }
   };
 
+  // Function to get image URL for a specific view type from productImages array
+  const getImageUrlByViewType = (images, viewType) => {
+    if (!images || !Array.isArray(images)) return '';
+    
+    const image = images.find(img => img.viewType === viewType);
+    return image ? image.imageUrl : '';
+  };
+
   // Handle form field changes
   const handleFormChange = (e) => {
     const { name, value } = e.target;
-    setProductForm({ ...productForm, [name]: value });
     
-    // If category is selected, fetch its items
-    if (name === 'catId' && value) {
-      fetchCategoryItemsById(value);
-      // Reset the catItemId when changing category
-      if (productForm.catItemId) {
-        setProductForm(prev => ({...prev, catItemId: ''}));
+    // Special handling for viewType changes
+    if (name === 'viewType') {
+      const newViewType = value;
+      
+      // Update imageUrl field based on the selected view type
+      if (productForm.productImages && productForm.productImages.length > 0) {
+        const imageUrl = getImageUrlByViewType(productForm.productImages, newViewType) || '';
+        
+        setProductForm(prev => ({
+          ...prev,
+          viewType: newViewType,
+          imageUrl: imageUrl
+        }));
+      } else {
+        // Just update the view type if no images are available
+        setProductForm(prev => ({
+          ...prev,
+          viewType: newViewType
+        }));
+      }
+    } else {
+      setProductForm({ ...productForm, [name]: value });
+      
+      // If category is selected, fetch its items
+      if (name === 'catId' && value) {
+        fetchCategoryItemsById(value);
+        // Reset the catItemId when changing category
+        if (productForm.catItemId) {
+          setProductForm(prev => ({...prev, catItemId: ''}));
+        }
       }
     }
+  };
+
+  // Add image handling functions
+  const handleImageFormChange = (e) => {
+    const { name, value } = e.target;
+    setCurrentImage(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleAddImage = () => {
+    if (!currentImage.imageUrl) {
+      setNotification({
+        open: true,
+        message: 'Зургийн URL оруулна уу',
+        severity: 'error'
+      });
+      return;
+    }
+    
+    // Add to productImages array
+    setProductForm(prev => ({
+      ...prev,
+      productImages: [...prev.productImages, { ...currentImage }]
+    }));
+    
+    // Clear current image form
+    setCurrentImage({ imageUrl: '', viewType: 'FRONT' });
+  };
+
+  const handleRemoveImage = (index) => {
+    setProductForm(prev => ({
+      ...prev,
+      productImages: prev.productImages.filter((_, i) => i !== index)
+    }));
   };
 
   // Handle form submission
@@ -271,14 +382,24 @@ const AdminProdEdit = ({ darkMode, toggleDarkMode }) => {
     try {
       // Format the data according to the expected ProdAllDTO structure
       const prodAllDTO = {
+        id: Number(id), // Add the ID to the DTO
         ...productForm,
         // Ensure numeric fields are actually numbers
         price: Number(productForm.price),
         stock: Number(productForm.stock),
-        storageGb: productForm.storageGb ? Number(productForm.storageGb) : null,
-        ramGb: productForm.ramGb ? Number(productForm.ramGb) : null,
+        // Keep storageGb and ramGb as strings
+        storageGb: productForm.storageGb || null,
+        ramGb: productForm.ramGb || null,
         catId: productForm.catId ? Number(productForm.catId) : null,
         catItemId: productForm.catItemId ? Number(productForm.catItemId) : null,
+        processor: productForm.processor || null,
+        os: productForm.os || null,
+        graphics: productForm.graphics || null,
+        display: productForm.display ? Number(productForm.display) : null, // Convert to Number if it exists
+        rating: null, // Include rating field with null value if not provided
+        model: productForm.model || null,
+        // Include productImages array
+        productImages: productForm.productImages || []
       };
       
       console.log("Sending update request to:", `/admin/update-product/${id}`);
@@ -481,7 +602,6 @@ const AdminProdEdit = ({ darkMode, toggleDarkMode }) => {
                   <StyledTextField
                     label="Storage (GB)"
                     name="storageGb"
-                    type="number"
                     value={productForm.storageGb}
                     onChange={handleFormChange}
                     fullWidth
@@ -491,57 +611,210 @@ const AdminProdEdit = ({ darkMode, toggleDarkMode }) => {
                   <StyledTextField
                     label="RAM (GB)"
                     name="ramGb"
-                    type="number"
                     value={productForm.ramGb}
                     onChange={handleFormChange}
                     fullWidth
                   />
                 </Grid>
+                
+                {/* Technical Specifications */}
                 <Grid item xs={12}>
+                  <Typography variant="h6" sx={{ mt: 2, mb: 1, color: theme.palette.primary.main }}>
+                    Technical Specifications
+                  </Typography>
+                </Grid>
+                
+                <Grid item xs={12} lg={6}>
                   <StyledTextField
-                    label="Image URL"
-                    name="imageUrl"
-                    value={productForm.imageUrl}
+                    label="Model"
+                    name="model"
+                    value={productForm.model}
                     onChange={handleFormChange}
                     fullWidth
-                    required
+                  />
+                </Grid>
+         
+                <Grid item xs={12} lg={6}>
+                  <StyledTextField
+                    label="Processor"
+                    name="processor"
+                    value={productForm.processor}
+                    onChange={handleFormChange}
+                    fullWidth
                   />
                 </Grid>
                 <Grid item xs={12} lg={6}>
-                  <StyledFormControl fullWidth>
-                    <StyledInputLabel>View Type</StyledInputLabel>
-                    <Select
-                      name="viewType"
-                      value={productForm.viewType}
-                      onChange={handleFormChange}
-                      label="View Type"
-                    >
-                      <MenuItem value="FRONT">Front</MenuItem>
-                      <MenuItem value="BACK">Back</MenuItem>
-                      <MenuItem value="RIGHT">Right</MenuItem>
-                      <MenuItem value="LEFT">Left</MenuItem>
-                    </Select>
-                  </StyledFormControl>
+                  <StyledTextField
+                    label="Operating System"
+                    name="os"
+                    value={productForm.os}
+                    onChange={handleFormChange}
+                    fullWidth
+                  />
                 </Grid>
                 <Grid item xs={12} lg={6}>
-                  {/* Preview Image */}
-                  <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column', border: '1px solid', borderColor: 'grey.300' }}>
-                    <CardMedia
-                      component="img"
-                      height="140"
-                      image={productForm.imageUrl || "https://via.placeholder.com/300x140?text=No+Image"}
-                      alt={productForm.name}
-                      sx={{ objectFit: 'contain', bgcolor: 'grey.100' }}
-                      onError={(e) => {
-                        e.target.src = 'https://via.placeholder.com/300x140?text=Invalid+URL';
-                      }}
-                    />
-                    <CardContent sx={{ flexGrow: 1, p: 2, pt: 1 }}>
-                      <Typography variant="caption" color="text.secondary">
-                        Image Preview
+                  <StyledTextField
+                    label="Graphics"
+                    name="graphics"
+                    value={productForm.graphics}
+                    onChange={handleFormChange}
+                    fullWidth
+                  />
+                </Grid>
+                <Grid item xs={12} lg={6}>
+                  <StyledTextField
+                    label="Display Size"
+                    name="display"
+                    value={productForm.display}
+                    onChange={handleFormChange}
+                    fullWidth
+                  />
+                </Grid>
+             
+                
+                <Grid item xs={12}>
+                  <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 500 }}>
+                    Бүтээгдэхүүний зургууд
+                  </Typography>
+                  <Box sx={{ mb: 2, p: 2, border: '1px dashed', borderColor: 'divider', borderRadius: 1 }}>
+                    <Grid container spacing={2} alignItems="flex-end">
+                      <Grid item xs={12} md={6}>
+                        <StyledTextField
+                          label="Зургийн URL"
+                          name="imageUrl"
+                          value={currentImage.imageUrl}
+                          onChange={handleImageFormChange}
+                          fullWidth
+                        />
+                      </Grid>
+                      <Grid item xs={12} md={4}>
+                        <StyledFormControl fullWidth>
+                          <StyledInputLabel>Зургийн төрөл</StyledInputLabel>
+                          <Select
+                            name="viewType"
+                            value={currentImage.viewType}
+                            onChange={handleImageFormChange}
+                            label="Зургийн төрөл"
+                          >
+                            <MenuItem value="FRONT">Урд тал</MenuItem>
+                            <MenuItem value="BACK">Ар тал</MenuItem>
+                            <MenuItem value="RIGHT">Баруун тал</MenuItem>
+                            <MenuItem value="LEFT">Зүүн тал</MenuItem>
+                          </Select>
+                        </StyledFormControl>
+                      </Grid>
+                      <Grid item xs={12} md={2}>
+                        <Button 
+                          variant="contained" 
+                          color="primary"
+                          onClick={handleAddImage}
+                          fullWidth
+                        >
+                          Нэмэх
+                        </Button>
+                      </Grid>
+                    </Grid>
+                  </Box>
+                  
+                  {/* Display added images */}
+                  {productForm.productImages.length > 0 && (
+                    <Box sx={{ mt: 2 }}>
+                      <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                        Нэмсэн зургууд: {productForm.productImages.length}
                       </Typography>
-                    </CardContent>
-                  </Card>
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                        {productForm.productImages.map((img, index) => (
+                          <Box
+                            key={index}
+                            sx={{
+                              position: 'relative',
+                              border: '1px solid',
+                              borderColor: 'divider',
+                              borderRadius: 1,
+                              p: 1,
+                              width: 120
+                            }}
+                          >
+                            <Box
+                              component="img"
+                              src={img.imageUrl}
+                              alt={`Product view ${img.viewType}`}
+                              sx={{ width: '100%', height: 80, objectFit: 'contain', mb: 1 }}
+                              onError={(e) => {
+                                e.target.src = 'https://via.placeholder.com/80x80?text=Error';
+                              }}
+                            />
+                            <Typography variant="caption" sx={{ display: 'block', textAlign: 'center' }}>
+                              {img.viewType}
+                            </Typography>
+                            <IconButton
+                              size="small"
+                              color="error"
+                              sx={{ position: 'absolute', top: 0, right: 0 }}
+                              onClick={() => handleRemoveImage(index)}
+                            >
+                              <CloseIcon fontSize="small" />
+                            </IconButton>
+                          </Box>
+                        ))}
+                      </Box>
+                    </Box>
+                  )}
+                  
+                  {/* Current view display */}
+                  <Box sx={{ mt: 3, pt: 2, borderTop: '1px solid', borderColor: 'divider' }}>
+                    <Typography variant="subtitle2" color="text.primary" sx={{ mb: 1 }}>
+                      Харах зургийн төрөл сонгох
+                    </Typography>
+                    <Grid container spacing={2}>
+                      <Grid item xs={12} lg={6}>
+                        <StyledFormControl fullWidth>
+                          <StyledInputLabel>Харах зургийн төрөл</StyledInputLabel>
+                          <Select
+                            name="viewType"
+                            value={productForm.viewType}
+                            onChange={handleFormChange}
+                            label="View Type"
+                          >
+                            <MenuItem value="FRONT">Урд тал</MenuItem>
+                            <MenuItem value="BACK">Ар тал</MenuItem>
+                            <MenuItem value="RIGHT">Баруун тал</MenuItem>
+                            <MenuItem value="LEFT">Зүүн тал</MenuItem>
+                          </Select>
+                        </StyledFormControl>
+                      </Grid>
+                      <Grid item xs={12} lg={6}>
+                        <StyledTextField
+                          label="Одоогийн зургийн URL"
+                          name="imageUrl"
+                          value={productForm.imageUrl}
+                          onChange={handleFormChange}
+                          fullWidth
+                          required
+                        />
+                      </Grid>
+                      <Grid item xs={12} lg={6}>
+                        {/* Preview Image */}
+                        <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column', border: '1px solid', borderColor: 'grey.300' }}>
+                          <CardMedia
+                            component="img"
+                            height="140"
+                            image={productForm.imageUrl || "https://via.placeholder.com/300x140?text=No+Image"}
+                            alt={productForm.name}
+                            sx={{ objectFit: 'contain', bgcolor: 'grey.100' }}
+                            onError={(e) => {
+                              e.target.src = 'https://via.placeholder.com/300x140?text=Invalid+URL';
+                            }}
+                          />
+                          <CardContent sx={{ flexGrow: 1, p: 2, pt: 1 }}>
+                            <Typography variant="caption" color="text.secondary">
+                              {productForm.viewType} View Preview
+                            </Typography>
+                          </CardContent>
+                        </Card>
+                      </Grid>
+                    </Grid>
+                  </Box>
                 </Grid>
                 <Grid item xs={12}>
                   <StyledTextField

@@ -1,17 +1,160 @@
 // pages/Products.js
 import React, { useState, useEffect } from "react";
-import Layout from "../components/Layout";
+import ReactDOM from "react-dom";
+import Layout from "../components/layout/Layout";
 import noAuthApi from "../utils/noAuthApi";
-import ProductSection from "../components/AllProductsSection";
-import { Box, useTheme, Snackbar, Alert } from "@mui/material";
+import ProductSection from "../components/products/AllProductsSection";
+import { Box, useTheme, Snackbar, Alert, Dialog, DialogTitle, DialogContent, DialogActions, Button, Typography, Container, IconButton, Fade, Grow } from "@mui/material";
+import CloseIcon from "@mui/icons-material/Close";
 import api from "../utils/axios";
+import { useRouter } from 'next/router';
+import Head from 'next/head';
 
 const Products = ({ darkMode, toggleDarkMode }) => {
     const [products, setProducts] = useState([]);
     const [error, setError] = useState(null);
     const [loading, setLoading] = useState(true);
     const theme = useTheme();
+    const router = useRouter();
     const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+    const [isLoggedIn, setIsLoggedIn] = useState(false);
+    const [loginPromptOpen, setLoginPromptOpen] = useState(false);
+    const [loginPromptMessage, setLoginPromptMessage] = useState('Сагсанд бараа нэмэхийн тулд нэвтэрнэ үү');
+    
+    // Generate star shadow values - reduced for performance
+    const generateStarShadows = (count, color) => {
+        let shadows = [];
+        for (let i = 0; i < count; i++) {
+            const x = Math.floor(Math.random() * 2000);
+            const y = Math.floor(Math.random() * 2000);
+            shadows.push(`${x}px ${y}px ${color}`);
+        }
+        return shadows.join(', ');
+    };
+    
+    // Generate CSS for stars based on the current theme
+    const getStarStyles = () => {
+        const starColor = theme.palette.mode === 'dark' ? '#FFF' : '#6d82ff';
+        const starColorBright = theme.palette.mode === 'dark' ? '#FFF' : '#5a61f1';
+        
+        return `
+            .animated-background {
+                position: relative;
+                width: 100%;
+                height: 100%;
+                overflow: hidden;
+            }
+            
+            .bg-animation {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                z-index: 0;
+                overflow: hidden;
+                background: ${theme.palette.mode === 'dark' 
+                    ? 'linear-gradient(125deg, #1e1e30 0%, #191927 40%, #0d0d20 70%, #16151c 100%)'
+                    : 'linear-gradient(125deg, #f5f5ff 0%, #fefefe 40%, #f0f8ff 70%, #f8f8ff 100%)'};
+            }
+            
+            #stars {
+                width: 1px;
+                height: 1px;
+                background: transparent;
+                box-shadow: ${generateStarShadows(50, starColor)};
+                animation: animateStars 20s linear infinite;
+            }
+            
+            #stars2 {
+                width: 2px;
+                height: 2px;
+                background: transparent;
+                box-shadow: ${generateStarShadows(30, starColor)};
+                animation: animateStars 30s linear infinite;
+            }
+            
+            #stars3 {
+                width: 3px;
+                height: 3px;
+                background: transparent;
+                box-shadow: ${generateStarShadows(20, starColorBright)};
+                animation: animateStars 40s linear infinite;
+            }
+            
+            #stars4 {
+                width: 4px;
+                height: 4px;
+                border-radius: 2px;
+                background: transparent;
+                box-shadow: ${generateStarShadows(10, starColorBright)};
+                animation: animateBigStars 30s linear infinite;
+            }
+            
+            @keyframes animateStars {
+                from { transform: translateY(0px); }
+                to { transform: translateY(-2000px); }
+            }
+            
+            @keyframes animateBigStars {
+                0% {
+                    box-shadow: ${generateStarShadows(10, theme.palette.mode === 'dark' ? '#FFF' : '#6d7eee')};
+                }
+                50% {
+                    box-shadow: ${generateStarShadows(10, theme.palette.mode === 'dark' ? '#BBB' : '#5a68e0')};
+                }
+                100% {
+                    box-shadow: ${generateStarShadows(10, theme.palette.mode === 'dark' ? '#FFF' : '#6d7eee')};
+                }
+            }
+            
+            @keyframes slideIn {
+                from { transform: translateX(100%); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+            }
+            
+            @keyframes fadeIn {
+                from { opacity: 0; transform: translateY(20px); }
+                to { opacity: 1; transform: translateY(0); }
+            }
+            
+            .fade-in-section {
+                opacity: 0;
+                transform: translateY(20px);
+                animation: fadeIn 0.6s ease-out forwards;
+            }
+            
+            .product-glow {
+                position: absolute;
+                bottom: -150px;
+                left: 50%;
+                transform: translateX(-50%);
+                width: 80%;
+                height: 200px;
+                background: radial-gradient(ellipse at center, 
+                    ${theme.palette.mode === 'dark' 
+                        ? 'rgba(75, 110, 255, 0.15) 0%, rgba(75, 110, 255, 0) 70%' 
+                        : 'rgba(75, 110, 255, 0.08) 0%, rgba(75, 110, 255, 0) 70%'});
+                pointer-events: none;
+                z-index: 0;
+            }
+            
+            .header-highlight {
+                position: relative;
+            }
+            
+            .header-highlight:after {
+                content: '';
+                position: absolute;
+                bottom: -6px;
+                left: 0;
+                width: 60px;
+                height: 4px;
+                border-radius: 2px;
+                background: linear-gradient(90deg, #6d42ff, #4b6eff);
+            }
+        `;
+    };
     
     useEffect(() => {
         const fetchProducts = async () => {
@@ -27,10 +170,43 @@ const Products = ({ darkMode, toggleDarkMode }) => {
         };
         
         fetchProducts();
+        
+        // Check authentication status
+        const token = localStorage.getItem('jwt');
+        setIsLoggedIn(!!token);
     }, []);
+    
+    // Auto-close notification after 3 seconds
+    useEffect(() => {
+        if (snackbar.open) {
+            const timer = setTimeout(() => {
+                setSnackbar({...snackbar, open: false});
+            }, 3000); // 3 seconds timeout
+            
+            return () => clearTimeout(timer);
+        }
+    }, [snackbar.open]);
+    
+    // Handle require login
+    const handleRequireLogin = (message = 'Сагсанд бараа нэмэхийн тулд нэвтэрнэ үү') => {
+        setLoginPromptMessage(message);
+        setLoginPromptOpen(true);
+    };
+    
+    // Handle login navigation
+    const handleNavigateToLogin = () => {
+        setLoginPromptOpen(false);
+        router.push('/login');
+    };
 
     const handleAddToCart = async (e, product) => {
         e.stopPropagation(); // Prevent card click when clicking the button
+        
+        // Check if user is authenticated
+        if (!isLoggedIn) {
+            handleRequireLogin('Сагсанд бараа нэмэхийн тулд нэвтэрнэ үү');
+            return;
+        }
         
         try {
             // First check if we need to create a cart (first item)
@@ -39,6 +215,12 @@ const Products = ({ darkMode, toggleDarkMode }) => {
             } catch (err) {
                 // Cart likely already exists, continue
                 console.log("Cart exists or error occurred:", err);
+                // If the error is 403, it means user is not authenticated
+                if (err.response && err.response.status === 403) {
+                    setIsLoggedIn(false);
+                    handleRequireLogin('Таны холболт дууссан. Дахин нэвтэрнэ үү.');
+                    return;
+                }
             }
             
             // Add item to cart
@@ -55,16 +237,24 @@ const Products = ({ darkMode, toggleDarkMode }) => {
             // Show success message
             setSnackbar({
                 open: true,
-                message: response.data?.message || `${product.title || product.name} added to cart!`,
+                message: response.data?.message || `${product.title || product.name} сагсанд нэмэгдлээ!`,
                 severity: 'success'
             });
         } catch (err) {
             console.error("Error adding item to cart:", err);
+            
+            // Handle 403 Forbidden specifically (authentication error)
+            if (err.response && err.response.status === 403) {
+                setIsLoggedIn(false);
+                handleRequireLogin('Таны холболт дууссан. Дахин нэвтэрнэ үү.');
+                return;
+            }
+            
             // Check if the error is related to stock availability
             const errorMessage = err.response?.data?.message || err.message;
             setSnackbar({
                 open: true,
-                message: errorMessage.includes('stock') ? errorMessage : "Failed to add item to cart. Please try again.",
+                message: errorMessage.includes('stock') ? errorMessage : "Сагсанд бараа нэмэхэд алдаа гарлаа. Дахин оролдоно уу.",
                 severity: 'error'
             });
         }
@@ -72,25 +262,71 @@ const Products = ({ darkMode, toggleDarkMode }) => {
 
     return (
         <Layout darkMode={darkMode} toggleDarkMode={toggleDarkMode}>
+            <Head>
+                <style>{getStarStyles()}</style>
+            </Head>
+            
+            <div className="animated-background">
+                <div className="bg-animation">
+                    <div id="stars"></div>
+                    <div id="stars2"></div>
+                    <div id="stars3"></div>
+                    <div id="stars4"></div>
+                </div>
+                
             <Box
                 sx={{
                     position: 'relative',
                     minHeight: '100vh',
-                    backgroundImage: theme.palette.mode === 'dark'
-                        ? `
-                            linear-gradient(180deg, rgba(88, 90, 228, 0.05) 0%, rgba(30, 30, 30, 0.01) 50%, rgba(142, 36, 170, 0.05) 100%),
-                            repeating-linear-gradient(45deg, rgba(88, 90, 228, 0.03) 0%, rgba(88, 90, 228, 0.03) 1px, transparent 1px, transparent 20px),
-                            repeating-linear-gradient(135deg, rgba(142, 36, 170, 0.03) 0%, rgba(142, 36, 170, 0.03) 1px, transparent 1px, transparent 20px)
-                        `
-                        : `
-                            linear-gradient(180deg, rgba(88, 90, 228, 0.03) 0%, rgba(255, 255, 255, 0) 50%, rgba(142, 36, 170, 0.03) 100%),
-                            repeating-linear-gradient(45deg, rgba(88, 90, 228, 0.01) 0%, rgba(88, 90, 228, 0.01) 1px, transparent 1px, transparent 20px),
-                            repeating-linear-gradient(135deg, rgba(142, 36, 170, 0.01) 0%, rgba(142, 36, 170, 0.01) 1px, transparent 1px, transparent 20px)
-                        `,
                     padding: '20px 0',
                     zIndex: 1,
                 }}
             >
+                    <Fade in={true} timeout={800}>
+                        <Box sx={{ position: 'relative' }}>
+                            <div className="product-glow"></div>
+                            <Container 
+                                maxWidth="xl" 
+                                sx={{ 
+                                    position: 'relative',
+                                    pt: 4,
+                                    pb: 2,
+                                    textAlign: 'center'
+                                }}
+                            >
+                                <Typography 
+                                    variant="h3" 
+                                    component="h1" 
+                                    className="header-highlight"
+                                    sx={{
+                                        fontWeight: 700,
+                                        fontSize: { xs: '2rem', sm: '2.5rem', md: '3rem' },
+                                        color: darkMode ? '#fff' : '#333',
+                                        mb: 3,
+                                        display: 'inline-block',
+                                        position: 'relative',
+                                    }}
+                                >
+                                    Бүх бүтээгдэхүүн харах
+                                </Typography>
+                                <Typography
+                                    variant="body1"
+                                    sx={{
+                                        fontSize: { xs: '1rem', sm: '1.1rem' },
+                                        color: darkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)',
+                                        maxWidth: '800px',
+                                        mx: 'auto',
+                                        mb: 5
+                                    }}
+                                >
+                                    Шинэ технологийн онцлог шинж чанартай, өрсөлдөхүйц үнэтэй бүтээгдэхүүнээ хайж олоорой
+                                </Typography>
+                            </Container>
+                        </Box>
+                    </Fade>
+                    
+                    <Grow in={true} timeout={1000}>
+                        <div className="fade-in-section">
                 <ProductSection
                     products={products}
                     loading={loading}
@@ -98,24 +334,139 @@ const Products = ({ darkMode, toggleDarkMode }) => {
                     darkMode={darkMode}
                     onAddToCart={handleAddToCart}
                 />
+                        </div>
+                    </Grow>
             </Box>
+            </div>
 
-            {/* Snackbar for notifications */}
-            <Snackbar 
-                open={snackbar.open} 
-                autoHideDuration={3000} 
-                onClose={() => setSnackbar({...snackbar, open: false})}
-                anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+            {/* Login Prompt Dialog */}
+            <Dialog
+                open={loginPromptOpen}
+                onClose={() => setLoginPromptOpen(false)}
+                maxWidth="sm"
+                fullWidth
+                TransitionComponent={Fade}
+                transitionDuration={400}
+                PaperProps={{
+                    sx: {
+                        borderRadius: '12px',
+                        boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
+                        background: theme.palette.mode === 'dark' 
+                            ? 'linear-gradient(145deg, #1e1e2f, #272736)'
+                            : 'linear-gradient(145deg, #ffffff, #f5f5ff)',
+                        overflow: 'hidden'
+                    }
+                }}
             >
-                <Alert 
-                    onClose={() => setSnackbar({...snackbar, open: false})} 
-                    severity={snackbar.severity}
-                    variant="filled"
-                    sx={{ width: '100%' }}
-                >
+                <DialogTitle sx={{ 
+                    pb: 1, 
+                    pt: 3,
+                    background: theme.palette.mode === 'dark' 
+                        ? 'linear-gradient(90deg, #2e2e45, #252538)'
+                        : 'linear-gradient(90deg, #f0f0ff, #e8e8ff)',
+                }}>
+                    <Typography variant="h5" fontWeight={600} sx={{ 
+                        color: theme.palette.mode === 'dark' ? '#fff' : '#333',
+                        fontFamily: '"Poppins", sans-serif',
+                    }}>
+                        Нэвтрэх шаардлагатай
+                    </Typography>
+                    <IconButton
+                        aria-label="close"
+                        onClick={() => setLoginPromptOpen(false)}
+                        sx={{
+                            position: 'absolute',
+                            right: 16,
+                            top: 16,
+                            color: theme.palette.grey[500],
+                        }}
+                    >
+                        <CloseIcon />
+                    </IconButton>
+                </DialogTitle>
+                <DialogContent sx={{ py: 3, px: 4 }}>
+                    <Box sx={{ py: 2, textAlign: 'center' }}>
+                        <Typography variant="body1" paragraph sx={{ fontSize: '1.05rem' }}>
+                            {loginPromptMessage}
+                        </Typography>
+                    </Box>
+                </DialogContent>
+                <DialogActions sx={{ p: 3, background: theme.palette.mode === 'dark' ? 'rgba(0,0,0,0.1)' : 'rgba(0,0,0,0.02)' }}>
+                    <Button
+                        onClick={() => setLoginPromptOpen(false)}
+                        variant="outlined"
+                        sx={{ 
+                            borderRadius: '8px',
+                            px: 3,
+                            color: theme.palette.mode === 'dark' ? '#aaa' : '#555',
+                            borderColor: theme.palette.mode === 'dark' ? '#555' : '#ddd',
+                            '&:hover': {
+                                borderColor: theme.palette.mode === 'dark' ? '#777' : '#bbb',
+                                background: 'rgba(0,0,0,0.05)'
+                            }
+                        }}
+                    >
+                        Цуцлах
+                    </Button>
+                    <Button
+                        onClick={handleNavigateToLogin}
+                        variant="contained"
+                        color="primary"
+                        sx={{ 
+                            textTransform: 'none',
+                            fontSize: '1rem',
+                            borderRadius: '8px',
+                            px: 3,
+                            background: 'linear-gradient(45deg, #6d42ff, #4b6eff)',
+                            boxShadow: '0 4px 15px rgba(75, 110, 255, 0.35)',
+                            '&:hover': {
+                                background: 'linear-gradient(45deg, #5a35e0, #3c5ce0)',
+                                boxShadow: '0 6px 20px rgba(75, 110, 255, 0.5)',
+                            }
+                        }}
+                    >
+                        Нэвтрэх хуудас руу очих
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Notification Portal */}
+            {snackbar.open && typeof document !== 'undefined' && ReactDOM.createPortal(
+                <div
+                    style={{
+                        position: 'fixed',
+                        bottom: 30,
+                        right: 30,
+                        zIndex: 99999, // Super high z-index
+                        backgroundColor: 
+                            snackbar.severity === 'success' ? '#3cb371' : 
+                            snackbar.severity === 'error' ? '#f44336' : 
+                            snackbar.severity === 'warning' ? '#ff9800' : 
+                            '#2196f3',
+                        color: 'white',
+                        padding: '14px 20px',
+                        borderRadius: '12px',
+                        boxShadow: '0 6px 24px rgba(0,0,0,0.3)',
+                        maxWidth: '400px',
+                        width: 'auto',
+                        animation: 'slideIn 0.3s ease-out',
+                    }}
+            >
+                    <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 2 }}>
+                        <Typography variant="body1" sx={{ fontWeight: 600, fontSize: '1rem', mr: 2 }}>
                     {snackbar.message}
-                </Alert>
-            </Snackbar>
+                        </Typography>
+                        <IconButton 
+                            size="small" 
+                            onClick={() => setSnackbar({...snackbar, open: false})} 
+                            sx={{ color: 'white', mt: -0.5, mr: -0.5 }}
+                        >
+                            <CloseIcon fontSize="small" />
+                        </IconButton>
+                    </Box>
+                </div>,
+                document.body
+            )}
         </Layout>
     );
 };

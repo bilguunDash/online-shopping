@@ -13,12 +13,14 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions
+  DialogActions,
+  Snackbar
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
-import AdminHeader from '../../components/AdminHeader';
+import AdminHeader from '../../components/admin/AdminHeader';
 import DeleteIcon from '@mui/icons-material/Delete';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import EditIcon from '@mui/icons-material/Edit';
 
 const drawerWidth = 0;
 
@@ -69,6 +71,11 @@ const AdminUsersManagement = ({ darkMode, toggleDarkMode }) => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [notification, setNotification] = useState({
+    open: false,
+    message: '',
+    severity: 'success'
+  });
   
   // Form state for adding new user
   const [showAddModal, setShowAddModal] = useState(false);
@@ -80,6 +87,16 @@ const AdminUsersManagement = ({ darkMode, toggleDarkMode }) => {
     phone: ''
   });
   const [formErrors, setFormErrors] = useState({});
+  
+  // Form state for editing user
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editUser, setEditUser] = useState({
+    id: '',
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: ''
+  });
   
   useEffect(() => {
     // Check if user is logged in
@@ -103,10 +120,16 @@ const AdminUsersManagement = ({ darkMode, toggleDarkMode }) => {
     try {
       setLoading(true);
       const response = await api.get(API_ENDPOINTS.user.all);
+      
+      // Log the structure of the first user to debug date fields
+      if (response.data && response.data.length > 0) {
+        console.log("User data structure:", response.data[0]);
+      }
+      
       setUsers(response.data);
       setError(null);
     } catch (err) {
-      setError('Failed to load users. Please try again later.');
+      setError('Хэрэглэгчдийн жагсаалтыг ачааллах үйлдэл амжилтгүй боллоо. Дахин оролдоно уу.');
       console.error('Error fetching users:', err);
     } finally {
       setLoading(false);
@@ -115,13 +138,13 @@ const AdminUsersManagement = ({ darkMode, toggleDarkMode }) => {
 
   // Delete user
   const handleDeleteUser = async (id) => {
-    if (window.confirm('Are you sure you want to delete this user?')) {
+    if (window.confirm('Та энэ хэрэглэгчийг устгахдаа итгэлтэй байна уу?')) {
       try {
         await api.delete(API_ENDPOINTS.user.delete(id));
         // Remove from state
         setUsers(users.filter(user => user.id !== id));
       } catch (err) {
-        setError('Failed to delete user. Please try again later.');
+        setError('Хэрэглэгчийг устгах үйлдэл амжилтгүй боллоо. Дахин оролдоно уу.');
         console.error('Error deleting user:', err);
       }
     }
@@ -179,23 +202,23 @@ const AdminUsersManagement = ({ darkMode, toggleDarkMode }) => {
     const newErrors = {};
     
     if (!newUser.firstName.trim()) {
-      newErrors.firstName = "First name is required";
+      newErrors.firstName = "Нэр оруулна уу";
     }
     
     if (!newUser.lastName.trim()) {
-      newErrors.lastName = "Last name is required";
+      newErrors.lastName = "Овог оруулна уу";
     }
     
     if (!newUser.email.trim()) {
-      newErrors.email = "Email is required";
+      newErrors.email = "И-мэйл оруулна уу";
     } else if (!/\S+@\S+\.\S+/.test(newUser.email)) {
-      newErrors.email = "Email is invalid";
+      newErrors.email = "И-мэйл хаяг буруу байна";
     }
     
     if (!newUser.password) {
-      newErrors.password = "Password is required";
+      newErrors.password = "Нууц үг оруулна уу";
     } else if (newUser.password.length < 8) {
-      newErrors.password = "Password must be at least 8 characters";
+      newErrors.password = "Нууц үг хамгийн багадаа 8 тэмдэгт байх ёстой";
     }
     
     setFormErrors(newErrors);
@@ -208,6 +231,98 @@ const AdminUsersManagement = ({ darkMode, toggleDarkMode }) => {
       ...newUser,
       [name]: value
     });
+  };
+
+// Update the editUser state format to match User entity fields
+// Update the editUser state format to match User entity fields
+const handleOpenEditModal = (user) => {
+  setEditUser({
+    id: user.id,
+    firstName: user.firstName,  // Keep as firstName to match User entity
+    lastName: user.lastName,    // Keep as lastName to match User entity
+    email: user.email,
+    phone: user.phone || ''
+  });
+  setShowEditModal(true);
+};
+
+// Update the handleEditUser function with better error handling and debugging
+const handleEditUser = async () => {
+  try {
+    // Log what we're sending for debugging
+    console.log("Original editUser data:", editUser);
+    
+    // Convert to exact format expected by backend User entity
+    const userUpdateData = {
+      id: Number(editUser.id),
+      firstName: editUser.firstName.trim(),  // Changed back to firstName to match User entity
+      lastName: editUser.lastName.trim(),    // Changed back to lastName to match User entity
+      email: editUser.email.trim(),
+      phone: editUser.phone ? editUser.phone.trim() : null,
+      role: 'USER'
+    };
+    
+    console.log("Formatted data for API:", userUpdateData);
+    
+    // Use the API_ENDPOINTS constant
+    const response = await api.post(API_ENDPOINTS.user.update, userUpdateData);
+    
+    console.log("Update response:", response.data);
+    
+    setNotification({
+      open: true,
+      message: response.data.message || 'Хэрэглэгчийн мэдээлэл амжилттай шинэчлэгдлээ',
+      severity: 'success'
+    });
+    
+    // Close modal and refresh users list
+    setShowEditModal(false);
+    fetchUsers();
+  } catch (error) {
+    console.error("Update error details:", {
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      data: error.response?.data,
+      message: error.message,
+      requestData: error.config?.data
+    });
+    
+    setNotification({
+      open: true,
+      message: 'Хэрэглэгчийн мэдээлэл шинэчлэх үед алдаа гарлаа: ' + 
+               (error.response?.data?.message || error.response?.data || error.message),
+      severity: 'error'
+    });
+  }
+};
+
+  const handleCloseNotification = () => {
+    setNotification({ ...notification, open: false });
+  };
+
+  // Function to get user's registration date
+  const getUserRegistrationDate = (user) => {
+    // Check for different possible date field names
+    const dateField = user.createdAt || user.created_at || user.registeredAt || 
+                      user.registered_at || user.registrationDate || 
+                      user.registration_date || user.dateCreated || 
+                      user.date_created || user.createTime;
+    
+    if (dateField) {
+      try {
+        // Convert to date object and format
+        const date = new Date(dateField);
+        
+        // Check if date is valid
+        if (!isNaN(date.getTime())) {
+          return date.toLocaleDateString();
+        }
+      } catch (error) {
+        console.error("Error formatting date:", error);
+      }
+    }
+    
+    return 'N/A';
   };
 
   if (loading) {
@@ -233,7 +348,7 @@ const AdminUsersManagement = ({ darkMode, toggleDarkMode }) => {
         <Container maxWidth="lg">
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
             <Typography variant="h4" sx={{ fontWeight: 700, color: theme.palette.text.primary }}>
-              Users Management
+              Хэрэглэгчийн удирдлага
             </Typography>
             <Button 
               variant="contained" 
@@ -245,7 +360,7 @@ const AdminUsersManagement = ({ darkMode, toggleDarkMode }) => {
                 boxShadow: theme.shadows[4]
               }}
             >
-              Add New User
+              Шинэ хэрэглэгч нэмэх
             </Button>
           </Box>
 
@@ -272,12 +387,13 @@ const AdminUsersManagement = ({ darkMode, toggleDarkMode }) => {
               <thead>
                 <tr style={{ backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)' }}>
                   <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, borderBottom: `1px solid ${theme.palette.divider}` }}>#</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, borderBottom: `1px solid ${theme.palette.divider}` }}>First Name</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, borderBottom: `1px solid ${theme.palette.divider}` }}>Last Name</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, borderBottom: `1px solid ${theme.palette.divider}` }}>Email</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, borderBottom: `1px solid ${theme.palette.divider}` }}>Phone</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, borderBottom: `1px solid ${theme.palette.divider}` }}>Created At</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, borderBottom: `1px solid ${theme.palette.divider}` }}>Actions</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, borderBottom: `1px solid ${theme.palette.divider}` }}>ID</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, borderBottom: `1px solid ${theme.palette.divider}` }}>Нэр</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, borderBottom: `1px solid ${theme.palette.divider}` }}>Овог</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, borderBottom: `1px solid ${theme.palette.divider}` }}>И-мэйл</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, borderBottom: `1px solid ${theme.palette.divider}` }}>Утас</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, borderBottom: `1px solid ${theme.palette.divider}` }}>Бүртгүүлсэн огноо</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, borderBottom: `1px solid ${theme.palette.divider}` }}>Үйлдлүүд</th>
                 </tr>
               </thead>
               <tbody>
@@ -288,33 +404,44 @@ const AdminUsersManagement = ({ darkMode, toggleDarkMode }) => {
                         (theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.01)')
                     }}>
                       <td style={{ padding: '12px 16px', borderBottom: `1px solid ${theme.palette.divider}` }}>{index + 1}</td>
+                      <td style={{ padding: '12px 16px', borderBottom: `1px solid ${theme.palette.divider}` }}>{user.id}</td>
                       <td style={{ padding: '12px 16px', borderBottom: `1px solid ${theme.palette.divider}` }}>{user.firstName}</td>
                       <td style={{ padding: '12px 16px', borderBottom: `1px solid ${theme.palette.divider}` }}>{user.lastName}</td>
                       <td style={{ padding: '12px 16px', borderBottom: `1px solid ${theme.palette.divider}` }}>{user.email}</td>
                       <td style={{ padding: '12px 16px', borderBottom: `1px solid ${theme.palette.divider}` }}>{user.phone || 'N/A'}</td>
                       <td style={{ padding: '12px 16px', borderBottom: `1px solid ${theme.palette.divider}` }}>
-                        {user.createdAt 
-                          ? new Date(user.createdAt).toLocaleDateString() 
-                          : 'N/A'}
+                        {getUserRegistrationDate(user)}
                       </td>
                       <td style={{ padding: '12px 16px', borderBottom: `1px solid ${theme.palette.divider}` }}>
-                        <Button
-                          variant="outlined"
-                          color="error"
-                          size="small"
-                          startIcon={<DeleteIcon />}
-                          onClick={() => handleDeleteUser(user.id)}
-                          sx={{ borderRadius: '8px' }}
-                        >
-                          Delete
-                        </Button>
+                        <Box sx={{ display: 'flex', gap: 1 }}>
+                          <Button
+                            variant="outlined"
+                            color="primary"
+                            size="small"
+                            startIcon={<EditIcon />}
+                            onClick={() => handleOpenEditModal(user)}
+                            sx={{ borderRadius: '8px' }}
+                          >
+                            Засах
+                          </Button>
+                          <Button
+                            variant="outlined"
+                            color="error"
+                            size="small"
+                            startIcon={<DeleteIcon />}
+                            onClick={() => handleDeleteUser(user.id)}
+                            sx={{ borderRadius: '8px' }}
+                          >
+                            Устгах
+                          </Button>
+                        </Box>
                       </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={7} style={{ padding: '16px', textAlign: 'center', borderBottom: `1px solid ${theme.palette.divider}` }}>
-                      No users found
+                    <td colSpan={8} style={{ padding: '16px', textAlign: 'center', borderBottom: `1px solid ${theme.palette.divider}` }}>
+                      Хэрэглэгч олдсонгүй
                     </td>
                   </tr>
                 )}
@@ -338,13 +465,13 @@ const AdminUsersManagement = ({ darkMode, toggleDarkMode }) => {
         }}
       >
         <DialogTitle sx={{ fontWeight: 600, borderBottom: `1px solid ${theme.palette.divider}`, pb: 2 }}>
-          Add New User
+          Шинэ хэрэглэгч нэмэх
         </DialogTitle>
         <DialogContent sx={{ mt: 2 }}>
           <StyledTextField
             fullWidth
             margin="dense"
-            label="First Name"
+            label="Нэр"
             name="firstName"
             value={newUser.firstName}
             onChange={handleInputChange}
@@ -355,7 +482,7 @@ const AdminUsersManagement = ({ darkMode, toggleDarkMode }) => {
           <StyledTextField
             fullWidth
             margin="dense"
-            label="Last Name"
+            label="Овог"
             name="lastName"
             value={newUser.lastName}
             onChange={handleInputChange}
@@ -366,7 +493,7 @@ const AdminUsersManagement = ({ darkMode, toggleDarkMode }) => {
           <StyledTextField
             fullWidth
             margin="dense"
-            label="Email"
+            label="И-мэйл"
             name="email"
             type="email"
             value={newUser.email}
@@ -378,7 +505,7 @@ const AdminUsersManagement = ({ darkMode, toggleDarkMode }) => {
           <StyledTextField
             fullWidth
             margin="dense"
-            label="Phone"
+            label="Утас"
             name="phone"
             type="number"
             value={newUser.phone}
@@ -390,7 +517,7 @@ const AdminUsersManagement = ({ darkMode, toggleDarkMode }) => {
           <StyledTextField
             fullWidth
             margin="dense"
-            label="Password"
+            label="Нууц үг"
             name="password"
             type="password"
             value={newUser.password}
@@ -409,7 +536,7 @@ const AdminUsersManagement = ({ darkMode, toggleDarkMode }) => {
               borderRadius: '8px'
             }}
           >
-            Cancel
+            Цуцлах
           </Button>
           <Button 
             onClick={handleAddUser} 
@@ -420,10 +547,102 @@ const AdminUsersManagement = ({ darkMode, toggleDarkMode }) => {
               borderRadius: '8px'
             }}
           >
-            Add User
+            Хэрэглэгч нэмэх
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Edit User Dialog */}
+      <Dialog 
+        open={showEditModal} 
+        onClose={() => setShowEditModal(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: { 
+            borderRadius: '10px',
+            backgroundColor: theme.palette.background.paper
+          }
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: 600, borderBottom: `1px solid ${theme.palette.divider}`, pb: 2 }}>
+          Хэрэглэгчийн мэдээлэл засах
+        </DialogTitle>
+        <DialogContent sx={{ mt: 2 }}>
+          <StyledTextField
+            fullWidth
+            margin="dense"
+            label="Нэр"
+            name="firstName"
+            value={editUser.firstName}
+            onChange={(e) => setEditUser({...editUser, firstName: e.target.value})}
+            sx={{ mb: 2 }}
+          />
+          <StyledTextField
+            fullWidth
+            margin="dense"
+            label="Овог"
+            name="lastName"
+            value={editUser.lastName}
+            onChange={(e) => setEditUser({...editUser, lastName: e.target.value})}
+            sx={{ mb: 2 }}
+          />
+          <StyledTextField
+            fullWidth
+            margin="dense"
+            label="И-мэйл"
+            name="email"
+            type="email"
+            value={editUser.email}
+            onChange={(e) => setEditUser({...editUser, email: e.target.value})}
+            sx={{ mb: 2 }}
+          />
+          <StyledTextField
+            fullWidth
+            margin="dense"
+            label="Утас"
+            name="phone"
+            type="number"
+            value={editUser.phone}
+            onChange={(e) => setEditUser({...editUser, phone: e.target.value})}
+            sx={{ mb: 2 }}
+          />
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3 }}>
+          <Button 
+            onClick={() => setShowEditModal(false)} 
+            color="inherit"
+            sx={{ 
+              fontWeight: 500,
+              borderRadius: '8px'
+            }}
+          >
+            Цуцлах
+          </Button>
+          <Button 
+            onClick={handleEditUser} 
+            variant="contained" 
+            color="primary"
+            sx={{ 
+              fontWeight: 600,
+              borderRadius: '8px'
+            }}
+          >
+            Хадгалах
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Snackbar
+        open={notification.open}
+        autoHideDuration={6000}
+        onClose={handleCloseNotification}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <Alert onClose={handleCloseNotification} severity={notification.severity} sx={{ width: '100%' }}>
+          {notification.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

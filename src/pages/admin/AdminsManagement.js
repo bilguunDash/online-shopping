@@ -20,12 +20,19 @@ import {
   TextField, 
   Alert, 
   CircularProgress,
-  useTheme
+  useTheme,
+  IconButton,
+  Menu,
+  MenuItem,
+  Tooltip,
+  Snackbar
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
-import AdminHeader from '../../components/AdminHeader';
+import AdminHeader from '../../components/admin/AdminHeader';
 import DeleteIcon from '@mui/icons-material/Delete';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import EditIcon from '@mui/icons-material/Edit';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
 
 const drawerWidth = 0;
 
@@ -76,9 +83,16 @@ const AdminsManagement = ({ darkMode, toggleDarkMode }) => {
   const [admins, setAdmins] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [notification, setNotification] = useState({
+    open: false,
+    message: '',
+    severity: 'success'
+  });
   
   // Form state for adding new admin
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingAdmin, setEditingAdmin] = useState(null);
   const [newAdmin, setNewAdmin] = useState({
     firstName: '',
     lastName: '',
@@ -113,7 +127,7 @@ const AdminsManagement = ({ darkMode, toggleDarkMode }) => {
       setAdmins(response.data);
       setError(null);
     } catch (err) {
-      setError('Failed to load admins. Please try again later.');
+      setError('Админ жагсаалтыг ачааллах үйлдэл амжилтгүй боллоо. Дахин оролдоно уу.');
       console.error('Error fetching admins:', err);
     } finally {
       setLoading(false);
@@ -122,13 +136,13 @@ const AdminsManagement = ({ darkMode, toggleDarkMode }) => {
 
   // Delete admin
   const handleDeleteAdmin = async (id) => {
-    if (window.confirm('Are you sure you want to delete this admin?')) {
+    if (window.confirm('Та энэ админыг устгахдаа итгэлтэй байна уу?')) {
       try {
         await api.delete(API_ENDPOINTS.admin.delete(id));
         // Remove from state
         setAdmins(admins.filter(admin => admin.id !== id));
       } catch (err) {
-        setError('Failed to delete admin. Please try again later.');
+        setError('Админыг устгах үйлдэл амжилтгүй боллоо. Дахин оролдоно уу.');
         console.error('Error deleting admin:', err);
       }
     }
@@ -206,28 +220,28 @@ const AdminsManagement = ({ darkMode, toggleDarkMode }) => {
     const newErrors = {};
     
     if (!newAdmin.firstName.trim()) {
-      newErrors.firstName = "First name is required";
+      newErrors.firstName = "Нэр оруулна уу";
     }
     
     if (!newAdmin.lastName.trim()) {
-      newErrors.lastName = "Last name is required";
+      newErrors.lastName = "Овог оруулна уу";
     }
     
     if (!newAdmin.email.trim()) {
-      newErrors.email = "Email is required";
+      newErrors.email = "И-мэйл оруулна уу";
     } else if (!/\S+@\S+\.\S+/.test(newAdmin.email)) {
-      newErrors.email = "Email is invalid";
+      newErrors.email = "И-мэйл хаяг буруу байна";
     }
     
     if (!newAdmin.password) {
-      newErrors.password = "Password is required";
+      newErrors.password = "Нууц үг оруулна уу";
     } else if (newAdmin.password.length < 8) {
-      newErrors.password = "Password must be at least 8 characters";
+      newErrors.password = "Нууц үг хамгийн багадаа 8 тэмдэгт байх ёстой";
     }
     
-    // if (newAdmin.password !== newAdmin.confirmPassword) {
-    //   newErrors.confirmPassword = "Passwords do not match";
-    // }
+    if (newAdmin.password !== newAdmin.confirmPassword) {
+      newErrors.confirmPassword = "Нууц үг таарахгүй байна";
+    }
     
     setFormErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -239,6 +253,113 @@ const AdminsManagement = ({ darkMode, toggleDarkMode }) => {
       ...newAdmin,
       [name]: value
     });
+  };
+
+  const handleEditAdmin = async () => {
+    if (validateEditForm()) {
+      try {
+        // Log what we're sending for debugging
+        console.log("Original editingAdmin data:", editingAdmin);
+        
+        // Convert to exact format expected by backend User entity
+        const adminUpdateData = {
+          id: Number(editingAdmin.id),
+          firstName: editingAdmin.firstName.trim(),
+          lastName: editingAdmin.lastName.trim(),
+          email: editingAdmin.email.trim(),
+          phone: editingAdmin.phone ? editingAdmin.phone.trim() : null,
+          role: 'ADMIN'
+        };
+        
+        console.log("Formatted data for API:", adminUpdateData);
+        
+        // Use the API_ENDPOINTS constant
+        const response = await api.post(API_ENDPOINTS.user.update, adminUpdateData);
+        
+        console.log("Update response:", response.data);
+        
+        // Update the admin in the list
+        setAdmins(admins.map(admin => 
+          admin.id === editingAdmin.id ? adminUpdateData : admin
+        ));
+        
+        // Clear form and close modal
+        setEditingAdmin(null);
+        setShowEditModal(false);
+        
+        // Show success notification
+        setNotification({
+          open: true,
+          message: response.data.message || 'Админы мэдээлэл амжилттай шинэчлэгдлээ',
+          severity: 'success'
+        });
+        
+      } catch (err) {
+        console.error("Update error details:", {
+          status: err.response?.status,
+          statusText: err.response?.statusText,
+          data: err.response?.data,
+          message: err.message,
+          requestData: err.config?.data
+        });
+        
+        setNotification({
+          open: true,
+          message: 'Админы мэдээлэл шинэчлэх үед алдаа гарлаа: ' + 
+                   (err.response?.data?.message || err.response?.data || err.message),
+          severity: 'error'
+        });
+      }
+    }
+  };
+
+  const validateEditForm = () => {
+    const newErrors = {};
+    
+    if (!editingAdmin.firstName.trim()) {
+      newErrors.firstName = "Нэр оруулна уу";
+    }
+    
+    if (!editingAdmin.lastName.trim()) {
+      newErrors.lastName = "Овог оруулна уу";
+    }
+    
+    if (!editingAdmin.email.trim()) {
+      newErrors.email = "И-мэйл оруулна уу";
+    } else if (!/\S+@\S+\.\S+/.test(editingAdmin.email)) {
+      newErrors.email = "И-мэйл хаяг буруу байна";
+    }
+    
+    if (editingAdmin.phone && !/^\d{8}$/.test(editingAdmin.phone)) {
+      newErrors.phone = "Утасны дугаар 8 оронтой байх ёстой";
+    }
+    
+    setFormErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleEditInputChange = (e) => {
+    const { name, value } = e.target;
+    setEditingAdmin({
+      ...editingAdmin,
+      [name]: value
+    });
+  };
+
+  const openEditModal = (admin) => {
+    setEditingAdmin({
+      id: admin.id,
+      firstName: admin.firstName,
+      lastName: admin.lastName,
+      email: admin.email,
+      phone: admin.phone || '',
+      role: admin.role
+    });
+    setShowEditModal(true);
+  };
+
+  const handleCloseNotification = () => {
+    setNotification({ ...notification, open: false });
   };
 
   if (loading) {
@@ -264,7 +385,7 @@ const AdminsManagement = ({ darkMode, toggleDarkMode }) => {
         <Container maxWidth="lg">
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
             <Typography variant="h4" sx={{ fontWeight: 700, color: theme.palette.text.primary }}>
-              Admins Management
+              Админ удирдлага
             </Typography>
             <Button 
               variant="contained" 
@@ -276,7 +397,7 @@ const AdminsManagement = ({ darkMode, toggleDarkMode }) => {
                 boxShadow: theme.shadows[4]
               }}
             >
-              Add New Admin
+              Шинэ админ нэмэх
             </Button>
           </Box>
 
@@ -318,12 +439,12 @@ const AdminsManagement = ({ darkMode, toggleDarkMode }) => {
                   zIndex: 1
                 }}>
                   <th style={{ padding: '14px 16px', textAlign: 'left', fontWeight: 600, borderBottom: `1px solid ${theme.palette.divider}` }}>#</th>
-                  <th style={{ padding: '14px 16px', textAlign: 'left', fontWeight: 600, borderBottom: `1px solid ${theme.palette.divider}` }}>First Name</th>
-                  <th style={{ padding: '14px 16px', textAlign: 'left', fontWeight: 600, borderBottom: `1px solid ${theme.palette.divider}` }}>Last Name</th>
-                  <th style={{ padding: '14px 16px', textAlign: 'left', fontWeight: 600, borderBottom: `1px solid ${theme.palette.divider}` }}>Email</th>
-                  <th style={{ padding: '14px 16px', textAlign: 'left', fontWeight: 600, borderBottom: `1px solid ${theme.palette.divider}` }}>Phone</th>
-                  <th style={{ padding: '14px 16px', textAlign: 'left', fontWeight: 600, borderBottom: `1px solid ${theme.palette.divider}` }}>Created At</th>
-                  <th style={{ padding: '14px 16px', textAlign: 'center', fontWeight: 600, borderBottom: `1px solid ${theme.palette.divider}` }}>Actions</th>
+                  <th style={{ padding: '14px 16px', textAlign: 'left', fontWeight: 600, borderBottom: `1px solid ${theme.palette.divider}` }}>Нэр</th>
+                  <th style={{ padding: '14px 16px', textAlign: 'left', fontWeight: 600, borderBottom: `1px solid ${theme.palette.divider}` }}>Овог</th>
+                  <th style={{ padding: '14px 16px', textAlign: 'left', fontWeight: 600, borderBottom: `1px solid ${theme.palette.divider}` }}>И-мэйл</th>
+                  <th style={{ padding: '14px 16px', textAlign: 'left', fontWeight: 600, borderBottom: `1px solid ${theme.palette.divider}` }}>Утас</th>
+                  <th style={{ padding: '14px 16px', textAlign: 'left', fontWeight: 600, borderBottom: `1px solid ${theme.palette.divider}` }}>Бүртгүүлсэн огноо</th>
+                  <th style={{ padding: '14px 16px', textAlign: 'center', fontWeight: 600, borderBottom: `1px solid ${theme.palette.divider}` }}>Үйлдлүүд</th>
                 </tr>
               </thead>
               <tbody>
@@ -348,28 +469,59 @@ const AdminsManagement = ({ darkMode, toggleDarkMode }) => {
                           : 'N/A'}
                       </td>
                       <td style={{ padding: '12px 16px', borderBottom: `1px solid ${theme.palette.divider}`, textAlign: 'center', verticalAlign: 'middle' }}>
-                        <Button
-                          variant="outlined"
-                          color="error"
-                          size="small"
-                          startIcon={<DeleteIcon />}
-                          onClick={() => handleDeleteAdmin(admin.id || index)}
-                          sx={{ 
-                            borderRadius: '8px',
-                            minWidth: '30px',
-                            padding: '6px 12px',
-                            height: '36px'
-                          }}
-                        >
-                          Delete
-                        </Button>
+                        <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
+                          <Tooltip title="Засах" arrow placement="top">
+                            <IconButton
+                              onClick={() => openEditModal(admin)}
+                              size="small"
+                              sx={{
+                                color: theme.palette.primary.main,
+                                backgroundColor: theme.palette.mode === 'dark' 
+                                  ? 'rgba(25, 118, 210, 0.08)' 
+                                  : 'rgba(25, 118, 210, 0.04)',
+                                '&:hover': {
+                                  backgroundColor: theme.palette.mode === 'dark'
+                                    ? 'rgba(25, 118, 210, 0.12)'
+                                    : 'rgba(25, 118, 210, 0.08)',
+                                },
+                                transition: 'all 0.2s ease-in-out',
+                                borderRadius: '8px',
+                                padding: '8px',
+                              }}
+                            >
+                              <EditIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Устгах" arrow placement="top">
+                            <IconButton
+                              onClick={() => handleDeleteAdmin(admin.id || index)}
+                              size="small"
+                              sx={{
+                                color: theme.palette.error.main,
+                                backgroundColor: theme.palette.mode === 'dark'
+                                  ? 'rgba(211, 47, 47, 0.08)'
+                                  : 'rgba(211, 47, 47, 0.04)',
+                                '&:hover': {
+                                  backgroundColor: theme.palette.mode === 'dark'
+                                    ? 'rgba(211, 47, 47, 0.12)'
+                                    : 'rgba(211, 47, 47, 0.08)',
+                                },
+                                transition: 'all 0.2s ease-in-out',
+                                borderRadius: '8px',
+                                padding: '8px',
+                              }}
+                            >
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        </Box>
                       </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
                     <td colSpan={7} style={{ padding: '24px 16px', textAlign: 'center', borderBottom: `1px solid ${theme.palette.divider}` }}>
-                      No admins found
+                      Админ олдсонгүй
                     </td>
                   </tr>
                 )}
@@ -393,13 +545,13 @@ const AdminsManagement = ({ darkMode, toggleDarkMode }) => {
         }}
       >
         <DialogTitle sx={{ fontWeight: 600, borderBottom: `1px solid ${theme.palette.divider}`, pb: 2 }}>
-          Add New Admin
+          Шинэ админ нэмэх
         </DialogTitle>
         <DialogContent sx={{ mt: 2 }}>
           <StyledTextField
             fullWidth
             margin="dense"
-            label="First Name"
+            label="Нэр"
             name="firstName"
             value={newAdmin.firstName}
             onChange={handleInputChange}
@@ -410,7 +562,7 @@ const AdminsManagement = ({ darkMode, toggleDarkMode }) => {
           <StyledTextField
             fullWidth
             margin="dense"
-            label="Last Name"
+            label="Овог"
             name="lastName"
             value={newAdmin.lastName}
             onChange={handleInputChange}
@@ -421,7 +573,7 @@ const AdminsManagement = ({ darkMode, toggleDarkMode }) => {
           <StyledTextField
             fullWidth
             margin="dense"
-            label="Email"
+            label="И-мэйл"
             name="email"
             type="email"
             value={newAdmin.email}
@@ -433,7 +585,7 @@ const AdminsManagement = ({ darkMode, toggleDarkMode }) => {
           <StyledTextField
             fullWidth
             margin="dense"
-            label="Phone"
+            label="Утас"
             name="phone"
             type="number"
             value={newAdmin.phone}
@@ -445,7 +597,7 @@ const AdminsManagement = ({ darkMode, toggleDarkMode }) => {
           <StyledTextField
             fullWidth
             margin="dense"
-            label="Password"
+            label="Нууц үг"
             name="password"
             type="password"
             value={newAdmin.password}
@@ -457,7 +609,7 @@ const AdminsManagement = ({ darkMode, toggleDarkMode }) => {
           <StyledTextField
             fullWidth
             margin="dense"
-            label="Confirm Password"
+            label="Нууц үг баталгаажуулах"
             name="confirmPassword"
             type="password"
             value={newAdmin.confirmPassword}
@@ -475,7 +627,7 @@ const AdminsManagement = ({ darkMode, toggleDarkMode }) => {
               borderRadius: '8px'
             }}
           >
-            Cancel
+            Цуцлах
           </Button>
           <Button 
             onClick={handleAddAdmin} 
@@ -486,10 +638,109 @@ const AdminsManagement = ({ darkMode, toggleDarkMode }) => {
               borderRadius: '8px'
             }}
           >
-            Add Admin
+            Админ нэмэх
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Edit Admin Dialog */}
+      <Dialog 
+        open={showEditModal} 
+        onClose={() => setShowEditModal(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: { 
+            borderRadius: '10px',
+            backgroundColor: theme.palette.background.paper
+          }
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: 600, borderBottom: `1px solid ${theme.palette.divider}`, pb: 2 }}>
+          Админы мэдээлэл засах
+        </DialogTitle>
+        <DialogContent sx={{ mt: 2 }}>
+          <StyledTextField
+            fullWidth
+            margin="dense"
+            label="Нэр"
+            name="firstName"
+            value={editingAdmin?.firstName || ''}
+            onChange={handleEditInputChange}
+            error={!!formErrors.firstName}
+            helperText={formErrors.firstName}
+            sx={{ mb: 2 }}
+          />
+          <StyledTextField
+            fullWidth
+            margin="dense"
+            label="Овог"
+            name="lastName"
+            value={editingAdmin?.lastName || ''}
+            onChange={handleEditInputChange}
+            error={!!formErrors.lastName}
+            helperText={formErrors.lastName}
+            sx={{ mb: 2 }}
+          />
+          <StyledTextField
+            fullWidth
+            margin="dense"
+            label="И-мэйл"
+            name="email"
+            type="email"
+            value={editingAdmin?.email || ''}
+            onChange={handleEditInputChange}
+            error={!!formErrors.email}
+            helperText={formErrors.email}
+            sx={{ mb: 2 }}
+          />
+          <StyledTextField
+            fullWidth
+            margin="dense"
+            label="Утас"
+            name="phone"
+            type="tel"
+            value={editingAdmin?.phone || ''}
+            onChange={handleEditInputChange}
+            error={!!formErrors.phone}
+            helperText={formErrors.phone}
+          />
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3 }}>
+          <Button 
+            onClick={() => setShowEditModal(false)} 
+            color="inherit"
+            sx={{ 
+              fontWeight: 500,
+              borderRadius: '8px'
+            }}
+          >
+            Цуцлах
+          </Button>
+          <Button 
+            onClick={handleEditAdmin} 
+            variant="contained" 
+            color="primary"
+            sx={{ 
+              fontWeight: 600,
+              borderRadius: '8px'
+            }}
+          >
+            Хадгалах
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Snackbar
+        open={notification.open}
+        autoHideDuration={6000}
+        onClose={handleCloseNotification}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <Alert onClose={handleCloseNotification} severity={notification.severity} sx={{ width: '100%' }}>
+          {notification.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

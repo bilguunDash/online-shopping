@@ -15,7 +15,7 @@ import {
   Avatar
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
-import AdminHeader from '../../components/AdminHeader';
+import AdminHeader from '../../components/admin/AdminHeader';
 import PeopleAltIcon from '@mui/icons-material/PeopleAlt';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import DashboardIcon from '@mui/icons-material/Dashboard';

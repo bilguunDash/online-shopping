@@ -1,14 +1,14 @@
 // pages/Accounts.js
 import React from "react";
-import Layout from "../components/Layout";
-import AccountSection from "../components/AccountSection";
+import Layout from "../components/layout/Layout";
+import AccountSection from "../components/pages/AccountSection";
 
-const AboutPage = ({ darkMode, toggleDarkMode }) => {
+const Accounts = () => {
     return (
         <Layout>
-            <AccountSection darkMode={darkMode} />
+            <AccountSection />
         </Layout>
     );
 };
 
-export default AboutPage;
+export default Accounts;

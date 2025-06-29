@@ -12,12 +12,13 @@ const nextConfig = {
       "m.media-amazon.com",
       "cdnp.cody.mn",
       "p1-ofp.static.pub",
-      "p3-ofp.static.pub",
       "p2-ofp.static.pub",
+      "p3-ofp.static.pub",
       "p4-ofp.static.pub",
       "cdsassets.apple.com",
       "www.sammyfans.com",
-      "dlcdnwebimgs.asus.com"
+      "dlcdnwebimgs.asus.com",
+      "www.dell.com" // ✅ Corrected Dell domain
     ]
   },
   async redirects() {
